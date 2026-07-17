@@ -6,5 +6,5 @@ Cluster-level PersistentVolume and PersistentVolumeClaim used by the Log output 
 kubectl apply -f .
 ```
 
-- PV: `shared-pv` (hostPath `/var/lib/shared-data`)
-- PVC: `shared-pvc`
+- PV/PVC for Log output + Ping-pong: `shared-pv` / `shared-pvc`
+- PV/PVC for Todo image cache: `todo-image-pv` / `todo-image-pvc`
