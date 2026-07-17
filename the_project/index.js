@@ -81,6 +81,12 @@ const ensureImage = async () => {
   writeMeta({ fetchedAt: Date.now(), serveStaleOnce: false })
 }
 
+const HARDCODED_TODOS = [
+  'Learn Kubernetes basics',
+  'Deploy application to cluster',
+  'Configure persistent volumes',
+]
+
 const pageHtml = () => `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -88,32 +94,145 @@ const pageHtml = () => `<!DOCTYPE html>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Todo App</title>
   <style>
+    :root {
+      --green: #2e7d32;
+      --green-dark: #1b5e20;
+      --border: #dde3ea;
+      --text: #1a1a1a;
+      --muted: #777;
+    }
+    * { box-sizing: border-box; }
     body {
       font-family: system-ui, sans-serif;
       max-width: 40rem;
       margin: 2rem auto;
-      padding: 0 1rem;
-      color: #1a1a1a;
+      padding: 0 1rem 2rem;
+      color: var(--text);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    .hero {
       text-align: center;
     }
-    h1 { margin-bottom: 1.5rem; }
-    img {
+    .hero img {
       width: 100%;
       max-width: 36rem;
       border-radius: 0.75rem;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
     }
+    .todo-form {
+      display: flex;
+      gap: 0.75rem;
+      margin: 1.5rem 0 1.25rem;
+    }
+    .todo-form input {
+      flex: 1;
+      padding: 0.7rem 0.9rem;
+      border: 2px solid var(--green);
+      border-radius: 0.4rem;
+      font-size: 1rem;
+    }
+    .todo-form input:focus {
+      outline: 2px solid rgba(46, 125, 50, 0.25);
+    }
+    .todo-form button {
+      padding: 0.7rem 1.25rem;
+      border: none;
+      border-radius: 0.4rem;
+      background: var(--green);
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .todo-form button:hover {
+      background: var(--green-dark);
+    }
+    .todo-form button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .hint {
+      margin: -0.5rem 0 1rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    h2 {
+      margin: 0 0 0.75rem;
+      font-size: 1.15rem;
+    }
+    .todo-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 0.75rem;
+    }
+    .todo-list li {
+      padding: 0.85rem 1rem;
+      border: 1px solid var(--border);
+      border-left: 5px solid var(--green);
+      border-radius: 0.5rem;
+      background: #fff;
+    }
     footer {
       margin-top: 1.5rem;
-      color: #777;
+      color: var(--muted);
       font-size: 0.95rem;
+      text-align: center;
     }
   </style>
 </head>
 <body>
   <h1>Todo App</h1>
-  <img src="/image" alt="Cached random picture" />
+  <div class="hero">
+    <img src="/image" alt="Cached random picture" />
+  </div>
+  <form class="todo-form" id="todo-form">
+    <input
+      id="todo-input"
+      type="text"
+      maxlength="140"
+      placeholder="Enter a new todo (max 140 characters)"
+      aria-label="New todo"
+    />
+    <button type="submit" id="send-button">Send</button>
+  </form>
+  <p class="hint"><span id="char-count">0</span>/140 characters</p>
+  <h2>Todos</h2>
+  <ul class="todo-list">
+    ${HARDCODED_TODOS.map((todo) => `<li>${todo}</li>`).join('\n    ')}
+  </ul>
   <footer>DevOps with Kubernetes 2026</footer>
+  <script>
+    const form = document.getElementById('todo-form');
+    const input = document.getElementById('todo-input');
+    const sendButton = document.getElementById('send-button');
+    const charCount = document.getElementById('char-count');
+
+    const syncState = () => {
+      const length = input.value.length;
+      charCount.textContent = String(length);
+      sendButton.disabled = length === 0 || length > 140;
+    };
+
+    input.addEventListener('input', syncState);
+    form.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const value = input.value.trim();
+      if (!value || value.length > 140) {
+        return;
+      }
+      // Sending todos to the backend comes in a later exercise
+      console.log('Todo ready to send:', value);
+      input.value = '';
+      syncState();
+    });
+
+    syncState();
+  </script>
 </body>
 </html>
 `
