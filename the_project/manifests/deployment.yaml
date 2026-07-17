@@ -15,15 +15,11 @@ spec:
     spec:
       containers:
         - name: todo-app
-          image: todo-app:2.2
+          image: todo-app:2.6
           imagePullPolicy: Never
-          env:
-            - name: PORT
-              value: "3000"
-            - name: DATA_DIR
-              value: /data
-            - name: CACHE_MS
-              value: "600000"
+          envFrom:
+            - configMapRef:
+                name: todo-app-config
           ports:
             - containerPort: 3000
           volumeMounts:

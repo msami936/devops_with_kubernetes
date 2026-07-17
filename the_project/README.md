@@ -2,10 +2,13 @@
 
 Frontend serves HTML/JS and the cached Picsum image. Todo items are stored by a separate **todo-backend** service.
 
+All ports, URLs, and other settings come from ConfigMaps (no hardcoded config in source).
+
 ## Architecture
 
 - `todo-app` – HTML, form UI, image cache on PVC
 - `todo-backend` – `GET /todos` and `POST /todos` (in-memory for now)
+- ConfigMaps: `todo-app-config`, `todo-backend-config`
 
 Ingress routes `/todos` to the backend and `/` to the frontend.
 
@@ -15,23 +18,30 @@ Terminal 1 (backend):
 
 ```bash
 cd backend
-PORT=3001 node index.js
+PORT=3001 TODOS_PATH=/todos MAX_TODO_LENGTH=140 node index.js
 ```
 
 Terminal 2 (frontend):
 
 ```bash
 mkdir -p ./data
-DATA_DIR=./data PORT=3000 node index.js
+PORT=3000 \
+DATA_DIR=./data \
+CACHE_MS=600000 \
+PICSUM_URL=https://picsum.photos/1200 \
+TODOS_API_PATH=/todos \
+IMAGE_ROUTE=/image \
+IMAGE_FILENAME=image.jpg \
+META_FILENAME=image-meta.json \
+MAX_TODO_LENGTH=140 \
+node index.js
 ```
-
-Open http://localhost:3000 — for local API calls without Ingress, point the browser UI at the backend or use a reverse proxy. In the cluster, `/todos` is routed by Ingress.
 
 ## Build images
 
 ```bash
-docker build -t todo-app:2.2 .
-docker build -t todo-backend:2.2 ./backend
+docker build -t todo-app:2.6 .
+docker build -t todo-backend:2.6 ./backend
 ```
 
 ## Deploy to Kubernetes (k3d)
@@ -45,7 +55,7 @@ k3d cluster create k3s-default -p "8081:80@loadbalancer"
 Then:
 
 ```bash
-k3d image import todo-app:2.2 todo-backend:2.2 -c k3s-default
+k3d image import todo-app:2.6 todo-backend:2.6 -c k3s-default
 
 kubectl apply -f ../namespaces/project.yaml
 kubectl apply -f ../volumes/todo-persistentvolume.yaml

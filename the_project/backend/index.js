@@ -1,6 +1,16 @@
 const http = require('http')
 
-const PORT = process.env.PORT || 3001
+const requiredEnv = (name) => {
+  const value = process.env[name]
+  if (value === undefined || value === '') {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+
+const PORT = Number(requiredEnv('PORT'))
+const TODOS_PATH = requiredEnv('TODOS_PATH')
+const MAX_TODO_LENGTH = Number(requiredEnv('MAX_TODO_LENGTH'))
 
 let nextId = 4
 const todos = [
@@ -32,16 +42,18 @@ const readBody = (req) =>
     req.on('error', reject)
   })
 
+const isTodosPath = (path) => path === TODOS_PATH || path === `${TODOS_PATH}/`
+
 const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   try {
-    if (req.method === 'GET' && (path === '/todos' || path === '/todos/')) {
+    if (req.method === 'GET' && isTodosPath(path)) {
       sendJson(res, 200, todos)
       return
     }
 
-    if (req.method === 'POST' && (path === '/todos' || path === '/todos/')) {
+    if (req.method === 'POST' && isTodosPath(path)) {
       const raw = await readBody(req)
       let parsed
       try {
@@ -56,8 +68,10 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 400, { error: 'content is required' })
         return
       }
-      if (content.length > 140) {
-        sendJson(res, 400, { error: 'content must be at most 140 characters' })
+      if (content.length > MAX_TODO_LENGTH) {
+        sendJson(res, 400, {
+          error: `content must be at most ${MAX_TODO_LENGTH} characters`,
+        })
         return
       }
 

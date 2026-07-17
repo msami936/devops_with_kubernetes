@@ -3,12 +3,26 @@ const http = require('http')
 const https = require('https')
 const path = require('path')
 
-const PORT = process.env.PORT || 3000
-const DATA_DIR = process.env.DATA_DIR || '/data'
-const IMAGE_FILE = path.join(DATA_DIR, 'image.jpg')
-const META_FILE = path.join(DATA_DIR, 'image-meta.json')
-const CACHE_MS = Number(process.env.CACHE_MS || 10 * 60 * 1000)
-const PICSUM_URL = process.env.PICSUM_URL || 'https://picsum.photos/1200'
+const requiredEnv = (name) => {
+  const value = process.env[name]
+  if (value === undefined || value === '') {
+    throw new Error(`Missing required environment variable: ${name}`)
+  }
+  return value
+}
+
+const PORT = Number(requiredEnv('PORT'))
+const DATA_DIR = requiredEnv('DATA_DIR')
+const CACHE_MS = Number(requiredEnv('CACHE_MS'))
+const PICSUM_URL = requiredEnv('PICSUM_URL')
+const TODOS_API_PATH = requiredEnv('TODOS_API_PATH')
+const IMAGE_ROUTE = requiredEnv('IMAGE_ROUTE')
+const IMAGE_FILENAME = requiredEnv('IMAGE_FILENAME')
+const META_FILENAME = requiredEnv('META_FILENAME')
+const MAX_TODO_LENGTH = Number(requiredEnv('MAX_TODO_LENGTH'))
+
+const IMAGE_FILE = path.join(DATA_DIR, IMAGE_FILENAME)
+const META_FILE = path.join(DATA_DIR, META_FILENAME)
 
 fs.mkdirSync(DATA_DIR, { recursive: true })
 
@@ -69,7 +83,6 @@ const ensureImage = async () => {
     return
   }
 
-  // Cache expired: serve the old image one more time, then refresh on the next request
   if (!meta.serveStaleOnce) {
     console.log('Cache expired, serving stale image once more')
     writeMeta({ ...meta, serveStaleOnce: true })
@@ -188,24 +201,28 @@ const pageHtml = () => `<!DOCTYPE html>
 <body>
   <h1>Todo App</h1>
   <div class="hero">
-    <img src="/image" alt="Cached random picture" />
+    <img src="${IMAGE_ROUTE}" alt="Cached random picture" />
   </div>
   <form class="todo-form" id="todo-form">
     <input
       id="todo-input"
       type="text"
-      maxlength="140"
-      placeholder="Enter a new todo (max 140 characters)"
+      maxlength="${MAX_TODO_LENGTH}"
+      placeholder="Enter a new todo (max ${MAX_TODO_LENGTH} characters)"
       aria-label="New todo"
     />
     <button type="submit" id="send-button">Send</button>
   </form>
-  <p class="hint"><span id="char-count">0</span>/140 characters</p>
+  <p class="hint"><span id="char-count">0</span>/${MAX_TODO_LENGTH} characters</p>
   <p class="error" id="error-message"></p>
   <h2>Todos</h2>
   <ul class="todo-list" id="todo-list"></ul>
   <footer>DevOps with Kubernetes 2026</footer>
   <script>
+    const APP_CONFIG = {
+      todosApiPath: ${JSON.stringify(TODOS_API_PATH)},
+      maxTodoLength: ${MAX_TODO_LENGTH},
+    };
     const form = document.getElementById('todo-form');
     const input = document.getElementById('todo-input');
     const sendButton = document.getElementById('send-button');
@@ -216,7 +233,7 @@ const pageHtml = () => `<!DOCTYPE html>
     const syncState = () => {
       const length = input.value.length;
       charCount.textContent = String(length);
-      sendButton.disabled = length === 0 || length > 140;
+      sendButton.disabled = length === 0 || length > APP_CONFIG.maxTodoLength;
     };
 
     const renderTodos = (todos) => {
@@ -229,7 +246,7 @@ const pageHtml = () => `<!DOCTYPE html>
     };
 
     const loadTodos = async () => {
-      const response = await fetch('/todos');
+      const response = await fetch(APP_CONFIG.todosApiPath);
       if (!response.ok) {
         throw new Error('Failed to load todos');
       }
@@ -241,7 +258,7 @@ const pageHtml = () => `<!DOCTYPE html>
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const value = input.value.trim();
-      if (!value || value.length > 140) {
+      if (!value || value.length > APP_CONFIG.maxTodoLength) {
         return;
       }
 
@@ -249,7 +266,7 @@ const pageHtml = () => `<!DOCTYPE html>
       sendButton.disabled = true;
 
       try {
-        const response = await fetch('/todos', {
+        const response = await fetch(APP_CONFIG.todosApiPath, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ content: value }),
@@ -287,7 +304,7 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
-    if (req.method === 'GET' && urlPath === '/image') {
+    if (req.method === 'GET' && urlPath === IMAGE_ROUTE) {
       await ensureImage()
       if (!fs.existsSync(IMAGE_FILE)) {
         res.writeHead(404, { 'Content-Type': 'text/plain' })
@@ -299,7 +316,6 @@ const server = http.createServer(async (req, res) => {
       return
     }
 
-    // Useful for testing pod restarts / volume persistence
     if (req.method === 'GET' && urlPath === '/crash') {
       res.writeHead(200, { 'Content-Type': 'text/plain' })
       res.end('Crashing...\n')
