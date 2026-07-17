@@ -1,8 +1,8 @@
 # Namespaces
 
 - `exercises` – Log output, Ping-pong, and other course exercises
-- Project apps use a separate namespace (added in a later exercise)
+- `project` – Todo app and related project services
 
 ```bash
-kubectl apply -f exercises.yaml
+kubectl apply -f .
 ```
