@@ -86,6 +86,44 @@ kubectl get pods,svc,ingress -n demo
 kubectl get ns demo   # NotFound
 ```
 
+## DBaaS vs DIY (exercise 3.9)
+
+This project currently runs **DIY Postgres**: a StatefulSet + PVC inside the cluster (see `kustomize/base/postgres.yaml`). The alternative on GKE is **DBaaS**, e.g. [Cloud SQL for PostgreSQL](https://cloud.google.com/sql/docs/postgres).
+
+### Initialization — work and cost
+
+| | DIY (StatefulSet + PVC) | DBaaS (e.g. Cloud SQL) |
+|--|-------------------------|-------------------------|
+| **Work to start** | Write manifests (StatefulSet, Service, Secret, PVC), wire `DATABASE_URL`, choose storage class. Fits the same `kubectl apply` / CI path as the app. | Create instance (console/Terraform/API), networking (VPC / private IP / Auth Proxy or Workload Identity), DB user/password, connect the backend. More GCP-specific glue, less Kubernetes YAML. |
+| **Up-front cost** | Mostly cluster + disk: PVC storage is cheap; DB shares node CPU/RAM with other pods. | Dedicated instance bill from day one (vCPU, RAM, storage), even when idle. Small Cloud SQL instances are often more expensive than a bit of node capacity for a tiny course app. |
+| **Time to first working DB** | Fast if you already deploy K8s manifests; you own image, version, and env. | Fast for a default public instance; slower if you set up private networking and least-privilege access properly. |
+
+### Maintenance
+
+| | DIY | DBaaS |
+|--|-----|-------|
+| **Who patches OS / Postgres** | You (image tags, rolling restarts, testing upgrades). | Provider (scheduled maintenance windows; you still choose major versions). |
+| **HA / failover** | You design it (replicas, operators, or accept single-pod risk). A lone StatefulSet is a single point of failure. | Built-in regional HA / failover options with a checkbox (and higher price). |
+| **Scaling** | Resize PVC / nodes; vertical/horizontal DB scaling is manual and careful. | Resize instance / add read replicas via API; easier but still needs app awareness. |
+| **Config / extensions** | Full control (`postgresql.conf`, extensions, custom images). | Limited to what the service allows; some knobs only via larger machine tiers. |
+| **Monitoring** | You wire Prometheus/Grafana/logging (as in earlier course parts). | Metrics and logs integrate with Cloud Monitoring out of the box. |
+| **Portability** | Same pattern works on k3d, GKE, or another cloud with small changes. | Tied to one cloud vendor’s product and networking model. |
+
+### Backups and restore
+
+| | DIY | DBaaS |
+|--|-----|-------|
+| **What you get by default** | PVC persistence across pod restarts. **Not** a backup strategy: deleting the namespace/PVC (or a bad reclaim policy) can lose data. | Automated backups and retention policies are part of the product. |
+| **How you back up** | You schedule `pg_dump` / volume snapshots / an operator’s backup CRDs; store dumps elsewhere (GCS); test restores yourself. | Console/API: on-demand backup, PITR (point-in-time recovery) on supported tiers; restore to a new instance with little custom scripting. |
+| **Ease** | Flexible but easy to get wrong; restore drills are your responsibility. | Much easier day-to-day; restore is a documented product flow rather than a custom runbook. |
+
+### Summary for this project
+
+- **DIY** wins on learning value, cost for a small GKE cluster, and keeping everything in Kustomize/CI. You trade that for owning upgrades, HA, and real backups.
+- **DBaaS** wins when uptime, managed backups/PITR, and low ops load matter more than control or monthly bill.
+
+For this course app we keep **DIY Postgres** (StatefulSet + PVC): it matches the Kubernetes exercises, stays cheap on a single-node cluster, and is enough for ephemeral branch environments. For production traffic or data you cannot afford to lose, **Cloud SQL** (or similar) would be the safer default unless the team deliberately invests in operators, HA, and tested backup/restore.
+
 ## Run locally
 
 Terminal 1 (backend):
