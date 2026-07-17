@@ -2,9 +2,9 @@ FROM node:20-alpine
 
 WORKDIR /usr/src/app
 
-COPY index.js .
+COPY package.json ./
+RUN npm install --omit=dev
 
-ENV PORT=3000
-EXPOSE 3000
+COPY index.js .
 
 CMD ["node", "index.js"]

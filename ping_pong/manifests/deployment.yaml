@@ -15,10 +15,15 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: ping-pong:2.1
+          image: ping-pong:2.7
           imagePullPolicy: Never
           env:
             - name: PORT
               value: "3000"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DATABASE_URL
           ports:
             - containerPort: 3000
