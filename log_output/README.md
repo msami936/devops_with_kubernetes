@@ -21,17 +21,17 @@ docker run --rm log-output:1.1
 # Import the local image into the k3d cluster
 k3d image import log-output:1.1 -c k3s-default
 
-# Create a deployment
-kubectl create deployment log-output --image=log-output:1.1
+# Apply the declarative deployment
+kubectl apply -f manifests/
 
 # Confirm it is running
 kubectl get pods
 kubectl logs -l app=log-output -f
 ```
 
-Or, if the image is on Docker Hub:
+Restart the deployment:
 
 ```bash
-kubectl create deployment log-output --image=<your-dockerhub-user>/log-output:1.1
+kubectl rollout restart deployment/log-output
 kubectl logs -l app=log-output -f
 ```
