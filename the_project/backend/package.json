@@ -1,0 +1,9 @@
+{
+  "name": "todo-backend",
+  "version": "2.8.0",
+  "private": true,
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.13.1"
+  }
+}

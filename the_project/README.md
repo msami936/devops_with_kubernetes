@@ -7,8 +7,9 @@ All ports, URLs, and other settings come from ConfigMaps (no hardcoded config in
 ## Architecture
 
 - `todo-app` – HTML, form UI, image cache on PVC
-- `todo-backend` – `GET /todos` and `POST /todos` (in-memory for now)
+- `todo-backend` – `GET /todos` and `POST /todos` stored in Postgres
 - ConfigMaps: `todo-app-config`, `todo-backend-config`
+- Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
 
 Ingress routes `/todos` to the backend and `/` to the frontend.
 
@@ -41,7 +42,7 @@ node index.js
 
 ```bash
 docker build -t todo-app:2.6 .
-docker build -t todo-backend:2.6 ./backend
+docker build -t todo-backend:2.8 ./backend
 ```
 
 ## Deploy to Kubernetes (k3d)
@@ -55,9 +56,10 @@ k3d cluster create k3s-default -p "8081:80@loadbalancer"
 Then:
 
 ```bash
-k3d image import todo-app:2.6 todo-backend:2.6 -c k3s-default
+k3d image import todo-app:2.6 todo-backend:2.8 -c k3s-default
 
 kubectl apply -f ../namespaces/project.yaml
+kubectl apply -f postgres/
 kubectl apply -f ../volumes/todo-persistentvolume.yaml
 kubectl apply -f ../volumes/todo-persistentvolumeclaim.yaml
 kubectl apply -f manifests/

@@ -1,4 +1,5 @@
 const http = require('http')
+const { Pool } = require('pg')
 
 const requiredEnv = (name) => {
   const value = process.env[name]
@@ -11,13 +12,63 @@ const requiredEnv = (name) => {
 const PORT = Number(requiredEnv('PORT'))
 const TODOS_PATH = requiredEnv('TODOS_PATH')
 const MAX_TODO_LENGTH = Number(requiredEnv('MAX_TODO_LENGTH'))
+const DATABASE_URL = requiredEnv('DATABASE_URL')
 
-let nextId = 4
-const todos = [
-  { id: 1, content: 'Learn Kubernetes basics' },
-  { id: 2, content: 'Deploy application to cluster' },
-  { id: 3, content: 'Configure persistent volumes' },
+const pool = new Pool({ connectionString: DATABASE_URL })
+
+const seedTodos = [
+  'Learn Kubernetes basics',
+  'Deploy application to cluster',
+  'Configure persistent volumes',
 ]
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+const waitForDatabase = async () => {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    try {
+      await pool.query('SELECT 1')
+      console.log('Connected to Postgres')
+      return
+    } catch (error) {
+      console.log(`Waiting for Postgres (attempt ${attempt}/30): ${error.message}`)
+      await sleep(2000)
+    }
+  }
+  throw new Error('Postgres was not ready in time')
+}
+
+const ensureSchema = async () => {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id SERIAL PRIMARY KEY,
+      content TEXT NOT NULL
+    )
+  `)
+
+  const existing = await pool.query('SELECT COUNT(*)::int AS count FROM todos')
+  if (existing.rows[0].count === 0) {
+    for (const content of seedTodos) {
+      await pool.query('INSERT INTO todos (content) VALUES ($1)', [content])
+    }
+    console.log('Seeded initial todos')
+  }
+}
+
+const listTodos = async () => {
+  const result = await pool.query(
+    'SELECT id, content FROM todos ORDER BY id ASC'
+  )
+  return result.rows
+}
+
+const createTodo = async (content) => {
+  const result = await pool.query(
+    'INSERT INTO todos (content) VALUES ($1) RETURNING id, content',
+    [content]
+  )
+  return result.rows[0]
+}
 
 const sendJson = (res, statusCode, body) => {
   const payload = JSON.stringify(body)
@@ -49,7 +100,7 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (req.method === 'GET' && isTodosPath(path)) {
-      sendJson(res, 200, todos)
+      sendJson(res, 200, await listTodos())
       return
     }
 
@@ -75,9 +126,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
 
-      const todo = { id: nextId, content }
-      nextId += 1
-      todos.push(todo)
+      const todo = await createTodo(content)
       sendJson(res, 201, todo)
       return
     }
@@ -90,6 +139,15 @@ const server = http.createServer(async (req, res) => {
   }
 })
 
-server.listen(PORT, () => {
-  console.log(`Todo backend started in port ${PORT}`)
+const start = async () => {
+  await waitForDatabase()
+  await ensureSchema()
+  server.listen(PORT, () => {
+    console.log(`Todo backend started in port ${PORT}`)
+  })
+}
+
+start().catch((error) => {
+  console.error(error)
+  process.exit(1)
 })
