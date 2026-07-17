@@ -13,11 +13,30 @@ spec:
         app: log-output
     spec:
       containers:
-        - name: log-output
-          image: log-output:1.7
+        - name: log-generator
+          image: log-output:1.10
           imagePullPolicy: Never
+          command: ["node", "generator.js"]
+          env:
+            - name: LOG_FILE
+              value: /shared/log.txt
+          volumeMounts:
+            - name: shared-log
+              mountPath: /shared
+        - name: log-reader
+          image: log-output:1.10
+          imagePullPolicy: Never
+          command: ["node", "reader.js"]
           env:
             - name: PORT
               value: "3000"
+            - name: LOG_FILE
+              value: /shared/log.txt
           ports:
             - containerPort: 3000
+          volumeMounts:
+            - name: shared-log
+              mountPath: /shared
+      volumes:
+        - name: shared-log
+          emptyDir: {}
