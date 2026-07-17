@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: msami936/ping-pong:3.1
+          image: msami936/ping-pong:3.2
           imagePullPolicy: Always
           env:
             - name: PORT
@@ -27,3 +27,9 @@ spec:
                   key: DATABASE_URL
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5

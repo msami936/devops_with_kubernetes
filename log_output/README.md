@@ -60,3 +60,19 @@ env variable: MESSAGE=hello world
 2020-03-30T12:15:17.705Z: 8523ecb1-c716-4cb6-a044-b9e83bb98e43.
 Ping / Pongs: 3
 ```
+
+## Deploy to GKE (exercise 3.2)
+
+Manifests: `manifests-gke/`. Shared Ingress lives in `../ping_pong/manifests-gke/ingress.yaml`.
+
+```bash
+docker build -t msami936/log-output:3.2 .
+docker push msami936/log-output:3.2
+
+kubectl apply -f ../namespaces/exercises.yaml
+kubectl apply -f ../ping_pong/manifests-gke/postgres.yaml
+kubectl apply -f ../ping_pong/manifests-gke/deployment.yaml
+kubectl apply -f ../ping_pong/manifests-gke/service.yaml
+kubectl apply -f manifests-gke/
+kubectl apply -f ../ping_pong/manifests-gke/ingress.yaml
+```

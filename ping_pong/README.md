@@ -1,6 +1,7 @@
 # Ping-pong app
 
 Responds to `GET /pingpong` with `pong N` and exposes `GET /pings` with the current pong count.
+Also responds `200 ok` on `GET /` so GKE Ingress health checks succeed.
 The counter is stored in Postgres.
 
 ## Run locally
@@ -30,17 +31,13 @@ kubectl apply -f ../log_output/manifests/
 kubectl get pods,svc,statefulset,pvc -n exercises
 ```
 
-## Deploy to GKE (exercise 3.1)
-
-Uses a **LoadBalancer** Service so GCP assigns a public EXTERNAL-IP.
-Manifests: `manifests-gke/` (image from Docker Hub, Postgres with default StorageClass).
+## Deploy to GKE
 
 ### Prerequisites
 
 ```bash
 gcloud auth login
 gcloud config set project YOUR_PROJECT_ID
-# Billing must be enabled on the project (required for GKE)
 gcloud services enable container.googleapis.com
 ```
 
@@ -56,27 +53,48 @@ gcloud container clusters create dwk-cluster \
 gcloud container clusters get-credentials dwk-cluster --zone=europe-north1-a
 ```
 
-### Build & push image
+### Exercise 3.1 — LoadBalancer
 
 ```bash
 docker build -t msami936/ping-pong:3.1 .
 docker push msami936/ping-pong:3.1
-```
 
-### Deploy
-
-```bash
 kubectl apply -f ../namespaces/exercises.yaml
+kubectl apply -f manifests-gke/postgres.yaml
+# Use image tag 3.1 in deployment if deploying 3.1 only
 kubectl apply -f manifests-gke/
-
-kubectl get pods,svc -n exercises
-# Wait until EXTERNAL-IP is assigned on the LoadBalancer
-kubectl get svc ping-pong -n exercises --watch
 ```
 
-### Test
+### Exercise 3.2 — Ingress (Log output + Ping-pong)
+
+Ping-pong Service is **ClusterIP**. GKE Ingress routes:
+
+- `/` → log-output
+- `/pingpong` → ping-pong
+
+Ping-pong returns HTTP 200 on `/` for Ingress health checks.
 
 ```bash
-curl http://EXTERNAL-IP/pingpong
-curl http://EXTERNAL-IP/pings
+docker build -t msami936/ping-pong:3.2 .
+docker push msami936/ping-pong:3.2
+docker build -t msami936/log-output:3.2 ../log_output
+docker push msami936/log-output:3.2
+
+kubectl apply -f ../namespaces/exercises.yaml
+kubectl apply -f manifests-gke/postgres.yaml
+kubectl apply -f manifests-gke/deployment.yaml
+kubectl apply -f manifests-gke/service.yaml
+kubectl apply -f ../log_output/manifests-gke/
+kubectl apply -f manifests-gke/ingress.yaml
+
+kubectl get pods,svc,ingress -n exercises
+# Wait for Ingress ADDRESS
+kubectl get ingress dwk-ingress -n exercises --watch
+```
+
+Test:
+
+```bash
+curl http://INGRESS-IP/
+curl http://INGRESS-IP/pingpong
 ```

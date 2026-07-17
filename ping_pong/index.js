@@ -61,6 +61,13 @@ const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   try {
+    // GKE Ingress health checks hit `/` even when the Service is only routed at /pingpong
+    if (req.method === 'GET' && (path === '/' || path === '')) {
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end('ok\n')
+      return
+    }
+
     if (req.method === 'GET' && (path === '/pingpong' || path === '/pingpong/')) {
       const counter = await getCount()
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
