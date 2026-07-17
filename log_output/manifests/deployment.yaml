@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: log-generator
-          image: log-output:2.1
+          image: log-output:2.5
           imagePullPolicy: Never
           command: ["node", "generator.js"]
           env:
@@ -25,7 +25,7 @@ spec:
             - name: shared-log
               mountPath: /shared
         - name: log-reader
-          image: log-output:2.1
+          image: log-output:2.5
           imagePullPolicy: Never
           command: ["node", "reader.js"]
           env:
@@ -35,11 +35,27 @@ spec:
               value: /shared/log.txt
             - name: PINGPONG_URL
               value: http://ping-pong:3000/pings
+            - name: INFO_FILE
+              value: /config/information.txt
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: log-output-config
+                  key: MESSAGE
           ports:
             - containerPort: 3000
           volumeMounts:
             - name: shared-log
               mountPath: /shared
+            - name: log-output-config
+              mountPath: /config
+              readOnly: true
       volumes:
         - name: shared-log
           emptyDir: {}
+        - name: log-output-config
+          configMap:
+            name: log-output-config
+            items:
+              - key: information.txt
+                path: information.txt

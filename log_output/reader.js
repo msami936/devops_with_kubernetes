@@ -4,6 +4,8 @@ const http = require('http')
 const PORT = process.env.PORT || 3000
 const LOG_FILE = process.env.LOG_FILE || '/shared/log.txt'
 const PINGPONG_URL = process.env.PINGPONG_URL || 'http://ping-pong:3000/pings'
+const INFO_FILE = process.env.INFO_FILE || '/config/information.txt'
+const MESSAGE = process.env.MESSAGE || ''
 
 const readLatest = () => {
   try {
@@ -15,6 +17,14 @@ const readLatest = () => {
     return lines[lines.length - 1]
   } catch {
     return 'No log yet'
+  }
+}
+
+const readInfoFile = () => {
+  try {
+    return fs.readFileSync(INFO_FILE, 'utf8').trim()
+  } catch {
+    return ''
   }
 }
 
@@ -40,10 +50,19 @@ const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   if (req.method === 'GET' && (path === '/' || path === '/status')) {
+    const fileContent = readInfoFile()
     const status = readLatest()
     const pongs = await fetchPongCount()
+    const body = [
+      `file content: ${fileContent}`,
+      `env variable: MESSAGE=${MESSAGE}`,
+      `${status}.`,
+      `Ping / Pongs: ${pongs}`,
+      '',
+    ].join('\n')
+
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
-    res.end(`${status}.\nPing / Pongs: ${pongs}\n`)
+    res.end(body)
     return
   }
 
