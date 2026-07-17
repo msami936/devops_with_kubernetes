@@ -23,10 +23,10 @@ docker run --rm -e PORT=3000 -p 3000:3000 todo-app:1.5
 
 `PORT` is set in the Deployment via [`env`](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/).
 
-Create the cluster with a host mapping for the NodePort (30080):
+Create the cluster with a host mapping for Ingress (Traefik on port 80):
 
 ```bash
-k3d cluster create k3s-default -p "8080:30080@server:0"
+k3d cluster create k3s-default -p "8081:80@loadbalancer"
 ```
 
 Then:
@@ -36,12 +36,10 @@ k3d image import todo-app:1.5 -c k3s-default
 
 kubectl apply -f manifests/
 
-kubectl get pods,svc
+kubectl get pods,svc,ingress
 kubectl logs -l app=todo-app
 ```
 
-## Access via NodePort
+## Access via Ingress
 
-The Service exposes the app on NodePort `30080`, mapped to host port `8080`.
-
-Open http://localhost:8080 in a browser.
+Open http://localhost:8081 in a browser.
