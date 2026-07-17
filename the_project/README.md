@@ -10,6 +10,7 @@ All ports, URLs, and other settings come from ConfigMaps (no hardcoded config in
 - `todo-backend` – `GET /todos` and `POST /todos` stored in Postgres
 - ConfigMaps: `todo-app-config`, `todo-backend-config`
 - Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
+- CronJob `wiki-todo`: every hour adds `Read <wikipedia-url>` via the backend API
 
 Ingress routes `/todos` to the backend and `/` to the frontend.
 

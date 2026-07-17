@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: wiki-todo
+  namespace: project
+spec:
+  schedule: "0 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: wiki-todo
+              image: curlimages/curl:8.5.0
+              env:
+                - name: TODO_BACKEND_URL
+                  value: http://todo-backend:3001/todos
+                - name: WIKI_RANDOM_URL
+                  value: https://en.wikipedia.org/wiki/Special:Random
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -eu
+                  LOCATION=$(curl -sI -A "devops-with-kubernetes-todo-cron/1.0" "$WIKI_RANDOM_URL" \
+                    | tr -d '\r' \
+                    | awk 'tolower($1)=="location:" {print $2; exit}')
+                  case "$LOCATION" in
+                    //*) ARTICLE_URL="https:${LOCATION}" ;;
+                    http*) ARTICLE_URL="$LOCATION" ;;
+                    /*) ARTICLE_URL="https://en.wikipedia.org${LOCATION}" ;;
+                    *) echo "Unexpected Location header: ${LOCATION:-<empty>}" >&2; exit 1 ;;
+                  esac
+                  CONTENT="Read ${ARTICLE_URL}"
+                  ESCAPED=$(printf '%s' "$CONTENT" | sed 's/\\/\\\\/g; s/"/\\"/g')
+                  echo "Creating todo: ${CONTENT}"
+                  curl -sS -f -X POST "$TODO_BACKEND_URL" \
+                    -H "Content-Type: application/json" \
+                    -d "{\"content\":\"${ESCAPED}\"}"
+                  echo
