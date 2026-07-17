@@ -23,7 +23,7 @@ docker build -t log-output:2.1 .
 
 ## Deploy to Kubernetes (k3d)
 
-Log output calls the ping-pong Service at `http://ping-pong:3000/pings` (no shared volume between the apps).
+Log output and Ping-pong run in the `exercises` namespace. Log output calls the ping-pong Service at `http://ping-pong:3000/pings` (same namespace).
 
 ```bash
 k3d cluster create k3s-default -p "8081:80@loadbalancer"
@@ -34,10 +34,11 @@ Then:
 ```bash
 k3d image import log-output:2.1 ping-pong:2.1 -c k3s-default
 
+kubectl apply -f ../namespaces/exercises.yaml
 kubectl apply -f manifests/
 kubectl apply -f ../ping_pong/manifests/
 
-kubectl get pods,svc,ingress
+kubectl get pods,svc,ingress -n exercises
 ```
 
 ## Access via Ingress

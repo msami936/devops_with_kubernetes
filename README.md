@@ -24,3 +24,4 @@ Submissions for the [DevOps with Kubernetes](https://devopswithkubernetes.com/) 
 
 - [2.1.](https://github.com/msami936/devops_with_kubernetes/tree/2.1/log_output)
 - [2.2.](https://github.com/msami936/devops_with_kubernetes/tree/2.2/the_project)
+- [2.3.](https://github.com/msami936/devops_with_kubernetes/tree/2.3/namespaces)
