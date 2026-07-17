@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: log-generator
-          image: log-output:1.11
+          image: log-output:2.1
           imagePullPolicy: Never
           command: ["node", "generator.js"]
           env:
@@ -24,7 +24,7 @@ spec:
             - name: shared-log
               mountPath: /shared
         - name: log-reader
-          image: log-output:1.11
+          image: log-output:2.1
           imagePullPolicy: Never
           command: ["node", "reader.js"]
           env:
@@ -32,18 +32,13 @@ spec:
               value: "3000"
             - name: LOG_FILE
               value: /shared/log.txt
-            - name: COUNT_FILE
-              value: /data/pong.txt
+            - name: PINGPONG_URL
+              value: http://ping-pong:3000/pings
           ports:
             - containerPort: 3000
           volumeMounts:
             - name: shared-log
               mountPath: /shared
-            - name: shared-data
-              mountPath: /data
       volumes:
         - name: shared-log
           emptyDir: {}
-        - name: shared-data
-          persistentVolumeClaim:
-            claimName: shared-pvc

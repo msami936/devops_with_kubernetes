@@ -14,19 +14,10 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: ping-pong:1.11
+          image: ping-pong:2.1
           imagePullPolicy: Never
           env:
             - name: PORT
               value: "3000"
-            - name: COUNT_FILE
-              value: /data/pong.txt
           ports:
             - containerPort: 3000
-          volumeMounts:
-            - name: shared-data
-              mountPath: /data
-      volumes:
-        - name: shared-data
-          persistentVolumeClaim:
-            claimName: shared-pvc

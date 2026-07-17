@@ -3,14 +3,14 @@
 Split into two containers in one pod that share an `emptyDir` volume:
 
 1. **log-generator** – creates a random string on startup and appends `timestamp: string` to a file every 5 seconds
-2. **log-reader** – HTTP server that reads the shared file and returns the latest line on `GET /`, plus the ping-pong count from a shared PersistentVolume
+2. **log-reader** – HTTP server that returns the latest log line and fetches the ping-pong count over HTTP
 
 ## Run locally
 
 ```bash
-mkdir -p /tmp/shared /tmp/data
+mkdir -p /tmp/shared
 LOG_FILE=/tmp/shared/log.txt node generator.js &
-LOG_FILE=/tmp/shared/log.txt COUNT_FILE=/tmp/data/pong.txt PORT=3000 node reader.js
+LOG_FILE=/tmp/shared/log.txt PINGPONG_URL=http://localhost:3001/pings PORT=3000 node reader.js
 ```
 
 Open http://localhost:3000
@@ -18,12 +18,12 @@ Open http://localhost:3000
 ## Build and run with Docker
 
 ```bash
-docker build -t log-output:1.11 .
+docker build -t log-output:2.1 .
 ```
 
 ## Deploy to Kubernetes (k3d)
 
-Shares Ingress with the ping-pong app. Shared request count uses PV/PVC from `../volumes`.
+Log output calls the ping-pong Service at `http://ping-pong:3000/pings` (no shared volume between the apps).
 
 ```bash
 k3d cluster create k3s-default -p "8081:80@loadbalancer"
@@ -32,20 +32,12 @@ k3d cluster create k3s-default -p "8081:80@loadbalancer"
 Then:
 
 ```bash
-k3d image import log-output:1.11 ping-pong:1.11 -c k3s-default
+k3d image import log-output:2.1 ping-pong:2.1 -c k3s-default
 
-kubectl apply -f ../volumes/
 kubectl apply -f manifests/
 kubectl apply -f ../ping_pong/manifests/
 
-kubectl get pods,svc,ingress,pv,pvc
-```
-
-## Logs for multi-container pod
-
-```bash
-kubectl logs -l app=log-output -c log-generator
-kubectl logs -l app=log-output -c log-reader
+kubectl get pods,svc,ingress
 ```
 
 ## Access via Ingress
