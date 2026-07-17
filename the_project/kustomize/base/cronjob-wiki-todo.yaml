@@ -16,6 +16,13 @@ spec:
           containers:
             - name: wiki-todo
               image: curlimages/curl:8.5.0
+              resources:
+                requests:
+                  cpu: 5m
+                  memory: 16Mi
+                limits:
+                  cpu: 50m
+                  memory: 64Mi
               env:
                 - name: TODO_BACKEND_URL
                   value: http://todo-backend/todos

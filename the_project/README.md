@@ -12,6 +12,7 @@ Configuration is managed with **Kustomize** (`kustomize/base` + overlays).
 - Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
 - CronJob `wiki-todo`: hourly Wikipedia read todos
 - CronJob `todo-db-backup`: daily `pg_dump` → Google Cloud Storage
+- Resource requests/limits on app, backend, Postgres, and CronJobs
 - Ingress (GKE overlay): `/` → frontend, `/todos` → backend
 
 ## Kustomize layout
@@ -155,6 +156,23 @@ Manual test:
 kubectl create job --from=cronjob/todo-db-backup todo-db-backup-manual -n project
 kubectl logs -f job/todo-db-backup-manual -n project
 gcloud storage ls gs://msami936-todo-db-backups/
+```
+
+## Resource requests and limits (exercise 3.11)
+
+Values were chosen from `kubectl top pods -n project` on the e2-small GKE node (apps use ~2–4m CPU and ~13–28Mi memory at idle), with modest headroom so they still schedule when the node is memory-tight:
+
+| Workload | Requests | Limits |
+|----------|----------|--------|
+| `todo-app` | 10m / 32Mi | 100m / 128Mi |
+| `todo-backend` | 10m / 32Mi | 100m / 128Mi |
+| `todo-postgres` | 25m / 64Mi | 200m / 256Mi |
+| `wiki-todo` | 5m / 16Mi | 50m / 64Mi |
+| `todo-db-backup` | 50m / 128Mi | 500m / 512Mi |
+
+```bash
+kubectl top pods -n project
+kubectl describe pod -n project -l app=todo-app | findstr /i "Limits Requests"
 ```
 
 ## Run locally
