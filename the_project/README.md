@@ -20,9 +20,7 @@ docker run --rm -e PORT=3000 -p 3000:3000 todo-app:1.2
 ```bash
 k3d image import todo-app:1.2 -c k3s-default
 
-kubectl create deployment todo-app --image=todo-app:1.2
-kubectl set env deployment/todo-app PORT=3000
-kubectl patch deployment todo-app -p '{"spec":{"template":{"spec":{"containers":[{"name":"todo-app","imagePullPolicy":"Never"}]}}}}'
+kubectl apply -f manifests/
 
 kubectl get pods
 kubectl logs -l app=todo-app
