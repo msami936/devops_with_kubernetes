@@ -11,6 +11,7 @@ Configuration is managed with **Kustomize** (`kustomize/base` + overlays).
 - ConfigMaps: `todo-app-config`, `todo-backend-config`
 - Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
 - CronJob `wiki-todo`: hourly Wikipedia read todos
+- CronJob `todo-db-backup`: daily `pg_dump` → Google Cloud Storage
 - Ingress (GKE overlay): `/` → frontend, `/todos` → backend
 
 ## Kustomize layout
@@ -123,6 +124,38 @@ This project currently runs **DIY Postgres**: a StatefulSet + PVC inside the clu
 - **DBaaS** wins when uptime, managed backups/PITR, and low ops load matter more than control or monthly bill.
 
 For this course app we keep **DIY Postgres** (StatefulSet + PVC): it matches the Kubernetes exercises, stays cheap on a single-node cluster, and is enough for ephemeral branch environments. For production traffic or data you cannot afford to lose, **Cloud SQL** (or similar) would be the safer default unless the team deliberately invests in operators, HA, and tested backup/restore.
+
+## Database backup to GCS (exercise 3.10)
+
+CronJob `todo-db-backup` runs once per day (`0 0 * * *`), dumps the `todos` database with `pg_dump`, and uploads `backup-YYYY-MM-DD.sql` to bucket `gs://msami936-todo-db-backups`.
+
+Manifest: [`kustomize/base/cronjob-db-backup.yaml`](kustomize/base/cronjob-db-backup.yaml)
+
+The GCS credentials are **not** in git. Create them once on the cluster:
+
+```bash
+# Service account + key (example — already done for this project as todo-backup-sa)
+gcloud iam service-accounts create todo-backup-sa --display-name="Todo DB Backup Storage SA"
+gcloud projects add-iam-policy-binding sigma-tractor-452214-c9 \
+  --role="roles/storage.objectCreator" \
+  --member="serviceAccount:todo-backup-sa@sigma-tractor-452214-c9.iam.gserviceaccount.com"
+gcloud projects add-iam-policy-binding sigma-tractor-452214-c9 \
+  --role="roles/storage.objectViewer" \
+  --member="serviceAccount:todo-backup-sa@sigma-tractor-452214-c9.iam.gserviceaccount.com"
+gcloud iam service-accounts keys create key.json \
+  --iam-account=todo-backup-sa@sigma-tractor-452214-c9.iam.gserviceaccount.com
+
+kubectl create secret generic storage-sa-key -n project --from-file=key.json=key.json
+rm key.json   # do not commit
+```
+
+Manual test:
+
+```bash
+kubectl create job --from=cronjob/todo-db-backup todo-db-backup-manual -n project
+kubectl logs -f job/todo-db-backup-manual -n project
+gcloud storage ls gs://msami936-todo-db-backups/
+```
 
 ## Run locally
 

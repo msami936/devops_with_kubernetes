@@ -10,3 +10,4 @@ resources:
   - todo-app.yaml
   - todo-backend.yaml
   - cronjob-wiki-todo.yaml
+  - cronjob-db-backup.yaml

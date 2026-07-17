@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-db-backup-config
+data:
+  GCS_BUCKET: msami936-todo-db-backups
+  PGHOST: todo-postgres
+  PGPORT: "5432"
+  PGDATABASE: todos
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: todo-db-backup
+spec:
+  # Once per 24 hours (UTC midnight)
+  schedule: "0 0 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: google/cloud-sdk:slim
+              envFrom:
+                - configMapRef:
+                    name: todo-db-backup-config
+              env:
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-postgres-secret
+                      key: POSTGRES_USER
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: todo-postgres-secret
+                      key: POSTGRES_PASSWORD
+                - name: GOOGLE_APPLICATION_CREDENTIALS
+                  value: /var/secrets/google/key.json
+              volumeMounts:
+                - name: storage-sa-key
+                  mountPath: /var/secrets/google
+                  readOnly: true
+              command:
+                - /bin/bash
+                - -c
+                - |
+                  set -euo pipefail
+                  export DEBIAN_FRONTEND=noninteractive
+                  apt-get update -qq
+                  apt-get install -y -qq postgresql-client
+
+                  gcloud auth activate-service-account --key-file="${GOOGLE_APPLICATION_CREDENTIALS}"
+
+                  DATE="$(date -u +%F)"
+                  FILE="/tmp/backup-${DATE}.sql"
+                  echo "Dumping database ${PGDATABASE} from ${PGHOST}..."
+                  pg_dump -h "${PGHOST}" -p "${PGPORT}" -U "${PGUSER}" -d "${PGDATABASE}" -f "${FILE}"
+                  echo "Uploading ${FILE} to gs://${GCS_BUCKET}/..."
+                  gsutil cp "${FILE}" "gs://${GCS_BUCKET}/backup-${DATE}.sql"
+                  echo "Backup complete: gs://${GCS_BUCKET}/backup-${DATE}.sql"
+                  ls -la "${FILE}"
+          volumes:
+            - name: storage-sa-key
+              secret:
+                secretName: storage-sa-key
