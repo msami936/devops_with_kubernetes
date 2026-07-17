@@ -81,12 +81,6 @@ const ensureImage = async () => {
   writeMeta({ fetchedAt: Date.now(), serveStaleOnce: false })
 }
 
-const HARDCODED_TODOS = [
-  'Learn Kubernetes basics',
-  'Deploy application to cluster',
-  'Configure persistent volumes',
-]
-
 const pageHtml = () => `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -159,6 +153,12 @@ const pageHtml = () => `<!DOCTYPE html>
       color: var(--muted);
       font-size: 0.85rem;
     }
+    .error {
+      color: #b00020;
+      min-height: 1.25rem;
+      margin: 0 0 1rem;
+      font-size: 0.9rem;
+    }
     h2 {
       margin: 0 0 0.75rem;
       font-size: 1.15rem;
@@ -201,16 +201,17 @@ const pageHtml = () => `<!DOCTYPE html>
     <button type="submit" id="send-button">Send</button>
   </form>
   <p class="hint"><span id="char-count">0</span>/140 characters</p>
+  <p class="error" id="error-message"></p>
   <h2>Todos</h2>
-  <ul class="todo-list">
-    ${HARDCODED_TODOS.map((todo) => `<li>${todo}</li>`).join('\n    ')}
-  </ul>
+  <ul class="todo-list" id="todo-list"></ul>
   <footer>DevOps with Kubernetes 2026</footer>
   <script>
     const form = document.getElementById('todo-form');
     const input = document.getElementById('todo-input');
     const sendButton = document.getElementById('send-button');
     const charCount = document.getElementById('char-count');
+    const todoList = document.getElementById('todo-list');
+    const errorMessage = document.getElementById('error-message');
 
     const syncState = () => {
       const length = input.value.length;
@@ -218,20 +219,58 @@ const pageHtml = () => `<!DOCTYPE html>
       sendButton.disabled = length === 0 || length > 140;
     };
 
+    const renderTodos = (todos) => {
+      todoList.innerHTML = '';
+      todos.forEach((todo) => {
+        const item = document.createElement('li');
+        item.textContent = todo.content;
+        todoList.appendChild(item);
+      });
+    };
+
+    const loadTodos = async () => {
+      const response = await fetch('/todos');
+      if (!response.ok) {
+        throw new Error('Failed to load todos');
+      }
+      const todos = await response.json();
+      renderTodos(todos);
+    };
+
     input.addEventListener('input', syncState);
-    form.addEventListener('submit', (event) => {
+    form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const value = input.value.trim();
       if (!value || value.length > 140) {
         return;
       }
-      // Sending todos to the backend comes in a later exercise
-      console.log('Todo ready to send:', value);
-      input.value = '';
-      syncState();
+
+      errorMessage.textContent = '';
+      sendButton.disabled = true;
+
+      try {
+        const response = await fetch('/todos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ content: value }),
+        });
+        if (!response.ok) {
+          const errorBody = await response.json().catch(() => ({}));
+          throw new Error(errorBody.error || 'Failed to create todo');
+        }
+        input.value = '';
+        syncState();
+        await loadTodos();
+      } catch (error) {
+        errorMessage.textContent = error.message;
+        syncState();
+      }
     });
 
     syncState();
+    loadTodos().catch((error) => {
+      errorMessage.textContent = error.message;
+    });
   </script>
 </body>
 </html>
