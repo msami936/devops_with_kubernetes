@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-app-config
+data:
+  PORT: "3000"
+  DATA_DIR: /data
+  CACHE_MS: "600000"
+  PICSUM_URL: https://picsum.photos/1200
+  TODOS_API_PATH: /todos
+  IMAGE_ROUTE: /image
+  IMAGE_FILENAME: image.jpg
+  META_FILENAME: image-meta.json
+  MAX_TODO_LENGTH: "140"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: todo-backend-config
+data:
+  PORT: "3001"
+  TODOS_PATH: /todos
+  MAX_TODO_LENGTH: "140"

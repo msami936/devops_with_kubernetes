@@ -99,6 +99,12 @@ const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   try {
+    // GKE Ingress health checks hit `/`
+    if (req.method === 'GET' && (path === '/' || path === '')) {
+      sendJson(res, 200, { status: 'ok' })
+      return
+    }
+
     if (req.method === 'GET' && isTodosPath(path)) {
       sendJson(res, 200, await listTodos())
       return
