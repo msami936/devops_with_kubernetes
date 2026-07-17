@@ -1,7 +1,7 @@
 # Ping-pong app
 
-Responds to `GET /pingpong` with `pong N` and exposes `GET /pings` with the current pong count.
-Also responds `200 ok` on `GET /` so GKE Ingress health checks succeed.
+Responds to `GET /` with `pong N` and exposes `GET /pings` with the current pong count.
+On GKE, Gateway rewrites external `/pingpong` → `/` so the cluster URL does not leak into the app.
 The counter is stored in Postgres.
 
 ## Run locally
@@ -118,3 +118,17 @@ curl http://GATEWAY-IP/
 curl http://GATEWAY-IP/pingpong
 curl http://GATEWAY-IP/pings
 ```
+
+### Exercise 3.4 — Path rewrite
+
+Ping-pong serves at app root `/`. The HTTPRoute rewrites `/pingpong` → `/` with a [URLRewrite](https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/) filter:
+
+```bash
+docker build -t msami936/ping-pong:3.4 .
+docker push msami936/ping-pong:3.4
+
+kubectl apply -f manifests-gke/deployment.yaml
+kubectl apply -f manifests-gke/httproute-ping-pong.yaml
+```
+
+External clients still use `http://GATEWAY-IP/pingpong`; the app only sees `/`.

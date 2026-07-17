@@ -8,10 +8,22 @@ spec:
     - name: dwk-gateway
       kind: Gateway
   rules:
+    # External /pingpong is rewritten to app root `/`
+    # https://gateway-api.sigs.k8s.io/guides/http-redirect-rewrite/
     - matches:
         - path:
             type: PathPrefix
             value: /pingpong
+      filters:
+        - type: URLRewrite
+          urlRewrite:
+            path:
+              type: ReplacePrefixMatch
+              replacePrefixMatch: /
+      backendRefs:
+        - name: ping-pong
+          port: 80
+    - matches:
         - path:
             type: PathPrefix
             value: /pings
