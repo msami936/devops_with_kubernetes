@@ -106,20 +106,27 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && isTodosPath(path)) {
       const raw = await readBody(req)
+      console.log(`todo request received: ${raw}`)
+
       let parsed
       try {
         parsed = JSON.parse(raw || '{}')
       } catch {
+        console.log('todo request rejected (invalid JSON)')
         sendJson(res, 400, { error: 'Invalid JSON' })
         return
       }
 
       const content = typeof parsed.content === 'string' ? parsed.content.trim() : ''
       if (!content) {
+        console.log('todo request rejected (empty content)')
         sendJson(res, 400, { error: 'content is required' })
         return
       }
       if (content.length > MAX_TODO_LENGTH) {
+        console.log(
+          `todo request rejected (too long, ${content.length}/${MAX_TODO_LENGTH}): ${content}`
+        )
         sendJson(res, 400, {
           error: `content must be at most ${MAX_TODO_LENGTH} characters`,
         })
@@ -127,6 +134,7 @@ const server = http.createServer(async (req, res) => {
       }
 
       const todo = await createTodo(content)
+      console.log(`todo request accepted: ${content}`)
       sendJson(res, 201, todo)
       return
     }
