@@ -10,7 +10,7 @@ resources:
 images:
   - name: todo-app
     newName: msami936/todo-app
-    newTag: "3.6"
+    newTag: "3.7"
   - name: todo-backend
     newName: msami936/todo-backend
-    newTag: "3.6"
+    newTag: "3.7"

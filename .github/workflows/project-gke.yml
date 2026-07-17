@@ -2,7 +2,7 @@ name: Deploy todo project to GKE
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
     paths:
       - "the_project/**"
       - ".github/workflows/project-gke.yml"
@@ -24,6 +24,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Resolve target namespace
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          # main → project; other branches use the branch name as the namespace
+          # (course assumes branch names are valid Kubernetes namespace names)
+          if [ "$BRANCH" = "main" ]; then
+            NAMESPACE="project"
+          else
+            NAMESPACE="$BRANCH"
+          fi
+          echo "BRANCH=${BRANCH}"
+          echo "NAMESPACE=${NAMESPACE}"
+          echo "NAMESPACE=${NAMESPACE}" >> "$GITHUB_ENV"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -65,11 +79,15 @@ jobs:
       - name: Deploy with Kustomize
         working-directory: the_project/kustomize/overlays/gke
         run: |
+          # Align Namespace object name with the target environment
+          sed -i "s/^  name: project$/  name: ${NAMESPACE}/" ../../base/namespace.yaml
+
+          kustomize edit set namespace "${NAMESPACE}"
           kustomize edit set image \
             "todo-app=${DOCKERHUB_USER}/todo-app:${IMAGE_TAG}" \
             "todo-backend=${DOCKERHUB_USER}/todo-backend:${IMAGE_TAG}"
 
           kubectl apply -k .
-          kubectl rollout status deployment/todo-app -n project --timeout=300s
-          kubectl rollout status deployment/todo-backend -n project --timeout=300s
-          kubectl get pods,svc,ingress -n project
+          kubectl rollout status deployment/todo-app -n "${NAMESPACE}" --timeout=300s
+          kubectl rollout status deployment/todo-backend -n "${NAMESPACE}" --timeout=300s
+          kubectl get pods,svc,ingress -n "${NAMESPACE}"

@@ -28,16 +28,16 @@ Preview:
 kubectl kustomize kustomize/overlays/gke
 ```
 
-## Deploy to GKE (exercise 3.5 / 3.6)
+## Deploy to GKE (exercise 3.5–3.7)
 
 ```bash
 # Build & push
-docker build -t msami936/todo-app:3.6 .
-docker build -t msami936/todo-backend:3.6 ./backend
-docker push msami936/todo-app:3.6
-docker push msami936/todo-backend:3.6
+docker build -t msami936/todo-app:3.7 .
+docker build -t msami936/todo-backend:3.7 ./backend
+docker push msami936/todo-app:3.7
+docker push msami936/todo-backend:3.7
 
-# Apply via Kustomize (from repo root)
+# Apply via Kustomize (from repo root) — default namespace: project
 kubectl apply -k the_project/kustomize/overlays/gke
 
 kubectl get pods,svc,ingress,pvc -n project
@@ -46,11 +46,18 @@ kubectl get ingress todo-app -n project --watch
 
 `todo-app` uses a **ReadWriteOnce** PVC for the image cache, so its Deployment uses [`strategy: Recreate`](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy) instead of RollingUpdate (avoids two pods mounting the same volume).
 
-### Automatic deployment (exercise 3.6)
+### Automatic deployment (exercise 3.6 / 3.7)
 
 GitHub Actions workflow: [`.github/workflows/project-gke.yml`](../.github/workflows/project-gke.yml)
 
-On push to `main` (changes under `the_project/`), it builds both images, pushes to Docker Hub, updates the GKE Kustomize overlay image tags, and applies them.
+On push (changes under `the_project/`), it builds both images, pushes to Docker Hub, and deploys with Kustomize into a **per-branch namespace**:
+
+| Branch | Namespace |
+|--------|-----------|
+| `main` | `project` |
+| any other branch | same as the branch name |
+
+Branch names are assumed to be valid Kubernetes namespace names.
 
 Required repository secrets:
 
@@ -64,6 +71,9 @@ Test:
 ```bash
 curl http://INGRESS-IP/
 curl http://INGRESS-IP/todos
+
+# Feature-branch environment (example branch: demo)
+kubectl get pods,svc,ingress -n demo
 ```
 
 ## Run locally
