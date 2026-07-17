@@ -4,7 +4,7 @@ Submissions for the [DevOps with Kubernetes](https://devopswithkubernetes.com/) 
 
 ## Exercises
 
-### Chapter 1
+### Chapter 2
 
 - [1.1.](https://github.com/msami936/devops_with_kubernetes/tree/1.1/log_output)
 - [1.2.](https://github.com/msami936/devops_with_kubernetes/tree/1.2/the_project)
