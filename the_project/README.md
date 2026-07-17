@@ -28,21 +28,36 @@ Preview:
 kubectl kustomize kustomize/overlays/gke
 ```
 
-## Deploy to GKE (exercise 3.5)
+## Deploy to GKE (exercise 3.5 / 3.6)
 
 ```bash
 # Build & push
-docker build -t msami936/todo-app:3.5 .
-docker build -t msami936/todo-backend:3.5 ./backend
-docker push msami936/todo-app:3.5
-docker push msami936/todo-backend:3.5
+docker build -t msami936/todo-app:3.6 .
+docker build -t msami936/todo-backend:3.6 ./backend
+docker push msami936/todo-app:3.6
+docker push msami936/todo-backend:3.6
 
-# Apply via Kustomize
-kubectl apply -k kustomize/overlays/gke
+# Apply via Kustomize (from repo root)
+kubectl apply -k the_project/kustomize/overlays/gke
 
 kubectl get pods,svc,ingress,pvc -n project
 kubectl get ingress todo-app -n project --watch
 ```
+
+`todo-app` uses a **ReadWriteOnce** PVC for the image cache, so its Deployment uses [`strategy: Recreate`](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy) instead of RollingUpdate (avoids two pods mounting the same volume).
+
+### Automatic deployment (exercise 3.6)
+
+GitHub Actions workflow: [`.github/workflows/project-gke.yml`](../.github/workflows/project-gke.yml)
+
+On push to `main` (changes under `the_project/`), it builds both images, pushes to Docker Hub, updates the GKE Kustomize overlay image tags, and applies them.
+
+Required repository secrets:
+
+| Secret | Value |
+|--------|--------|
+| `DOCKERHUB_TOKEN` | Docker Hub access token for `msami936` |
+| `GKE_SA_KEY` | JSON key for a GCP service account with `roles/container.developer` |
 
 Test:
 

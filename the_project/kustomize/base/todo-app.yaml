@@ -15,6 +15,10 @@ metadata:
   name: todo-app
 spec:
   replicas: 1
+  # ReadWriteOnce PVC cannot be mounted by two pods during RollingUpdate
+  # https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#strategy
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: todo-app
