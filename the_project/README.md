@@ -23,21 +23,25 @@ docker run --rm -e PORT=3000 -p 3000:3000 todo-app:1.5
 
 `PORT` is set in the Deployment via [`env`](https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/).
 
+Create the cluster with a host mapping for the NodePort (30080):
+
+```bash
+k3d cluster create k3s-default -p "8080:30080@server:0"
+```
+
+Then:
+
 ```bash
 k3d image import todo-app:1.5 -c k3s-default
 
 kubectl apply -f manifests/
 
-kubectl get pods
+kubectl get pods,svc
 kubectl logs -l app=todo-app
 ```
 
-## Access with port-forward
+## Access via NodePort
 
-```bash
-kubectl port-forward deployment/todo-app 8080:3000
-```
+The Service exposes the app on NodePort `30080`, mapped to host port `8080`.
 
-Then open http://localhost:8080 in a browser.
-
-You will not have Ingress/Service access yet; networking comes in later exercises.
+Open http://localhost:8080 in a browser.
