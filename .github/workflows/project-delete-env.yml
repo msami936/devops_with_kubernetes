@@ -1,0 +1,58 @@
+name: Delete branch environment
+
+on:
+  delete:
+
+env:
+  GKE_CLUSTER: dwk-cluster
+  GKE_ZONE: europe-north1-a
+  PROJECT_ID: sigma-tractor-452214-c9
+
+jobs:
+  cleanup:
+    if: github.event.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Resolve namespace
+        run: |
+          BRANCH="${{ github.event.ref }}"
+          if [ "$BRANCH" = "main" ]; then
+            echo "Refusing to delete the main environment (namespace project)."
+            echo "SKIP=true" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          echo "NAMESPACE=${BRANCH}" >> "$GITHUB_ENV"
+          echo "SKIP=false" >> "$GITHUB_ENV"
+          echo "Will delete namespace: ${BRANCH}"
+
+      - name: Authenticate to Google Cloud
+        if: env.SKIP != 'true'
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GKE_SA_KEY }}
+
+      - name: Set up gcloud
+        if: env.SKIP != 'true'
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get GKE credentials
+        if: env.SKIP != 'true'
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_ZONE }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Delete namespace
+        if: env.SKIP != 'true'
+        run: |
+          if kubectl get namespace "${NAMESPACE}" >/dev/null 2>&1; then
+            kubectl delete namespace "${NAMESPACE}" --wait=false
+            echo "Deleted namespace ${NAMESPACE}"
+          else
+            echo "Namespace ${NAMESPACE} does not exist; nothing to delete."
+          fi

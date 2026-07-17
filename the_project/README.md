@@ -59,6 +59,12 @@ On push (changes under `the_project/`), it builds both images, pushes to Docker 
 
 Branch names are assumed to be valid Kubernetes namespace names.
 
+### Delete environment on branch delete (exercise 3.8)
+
+Workflow: [`.github/workflows/project-delete-env.yml`](../.github/workflows/project-delete-env.yml)
+
+When a branch is deleted, the matching namespace is removed from the cluster. The `project` namespace (from `main`) is never deleted by this workflow.
+
 Required repository secrets:
 
 | Secret | Value |
@@ -74,6 +80,10 @@ curl http://INGRESS-IP/todos
 
 # Feature-branch environment (example branch: demo)
 kubectl get pods,svc,ingress -n demo
+
+# After deleting the branch remotely:
+# git push origin --delete demo
+kubectl get ns demo   # NotFound
 ```
 
 ## Run locally
