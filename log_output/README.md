@@ -61,9 +61,11 @@ env variable: MESSAGE=hello world
 Ping / Pongs: 3
 ```
 
-## Deploy to GKE (exercise 3.2)
+## Deploy to GKE (exercises 3.2 / 3.3)
 
-Manifests: `manifests-gke/`. Shared Ingress lives in `../ping_pong/manifests-gke/ingress.yaml`.
+Manifests: `manifests-gke/` (Deployment + Service + HTTPRoute).
+
+Shared Gateway: `../ping_pong/manifests-gke/gateway.yaml`
 
 ```bash
 docker build -t msami936/log-output:3.2 .
@@ -74,5 +76,6 @@ kubectl apply -f ../ping_pong/manifests-gke/postgres.yaml
 kubectl apply -f ../ping_pong/manifests-gke/deployment.yaml
 kubectl apply -f ../ping_pong/manifests-gke/service.yaml
 kubectl apply -f manifests-gke/
-kubectl apply -f ../ping_pong/manifests-gke/ingress.yaml
+kubectl apply -f ../ping_pong/manifests-gke/gateway.yaml
+kubectl apply -f ../ping_pong/manifests-gke/httproute-ping-pong.yaml
 ```

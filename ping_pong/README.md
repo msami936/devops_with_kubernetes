@@ -85,16 +85,36 @@ kubectl apply -f manifests-gke/postgres.yaml
 kubectl apply -f manifests-gke/deployment.yaml
 kubectl apply -f manifests-gke/service.yaml
 kubectl apply -f ../log_output/manifests-gke/
-kubectl apply -f manifests-gke/ingress.yaml
+# (older) kubectl apply -f manifests-gke/ingress.yaml
+```
 
-kubectl get pods,svc,ingress -n exercises
-# Wait for Ingress ADDRESS
-kubectl get ingress dwk-ingress -n exercises --watch
+### Exercise 3.3 — Gateway API
+
+Replaces Ingress with [Gateway API HTTP routing](https://gateway-api.sigs.k8s.io/guides/user-guides/http-routing/):
+
+- `Gateway` `dwk-gateway` (`gke-l7-global-external-managed`)
+- `HTTPRoute` `/pingpong` + `/pings` → ping-pong
+- `HTTPRoute` `/` → log-output
+
+```bash
+gcloud container clusters update dwk-cluster \
+  --zone=europe-north1-a \
+  --gateway-api=standard
+
+kubectl delete ingress dwk-ingress -n exercises --ignore-not-found
+kubectl apply -f manifests-gke/gateway.yaml
+kubectl apply -f manifests-gke/httproute-ping-pong.yaml
+kubectl apply -f ../log_output/manifests-gke/httproute.yaml
+
+kubectl get gateway,httproute -n exercises
+# Wait until ADDRESS is set and PROGRAMMED=True
+kubectl get gateway dwk-gateway -n exercises --watch
 ```
 
 Test:
 
 ```bash
-curl http://INGRESS-IP/
-curl http://INGRESS-IP/pingpong
+curl http://GATEWAY-IP/
+curl http://GATEWAY-IP/pingpong
+curl http://GATEWAY-IP/pings
 ```
