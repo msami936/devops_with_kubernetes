@@ -11,6 +11,7 @@ const requiredEnv = (name) => {
 
 const PORT = Number(requiredEnv('PORT'))
 const DATABASE_URL = requiredEnv('DATABASE_URL')
+const ENABLE_CPU_STRESS = process.env.ENABLE_CPU_STRESS === 'true'
 
 const pool = new Pool({ connectionString: DATABASE_URL })
 
@@ -119,6 +120,16 @@ const server = http.createServer(async (req, res) => {
 server.listen(PORT, () => {
   console.log(`Server started in port ${PORT}`)
 })
+
+if (ENABLE_CPU_STRESS) {
+  console.log('ENABLE_CPU_STRESS=true — burning CPU for canary analysis tests')
+  setInterval(() => {
+    const end = Date.now() + 200
+    while (Date.now() < end) {
+      // busy loop
+    }
+  }, 250)
+}
 
 maintainDatabase().catch((error) => {
   console.error(error)

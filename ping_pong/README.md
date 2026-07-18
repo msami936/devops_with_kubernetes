@@ -17,7 +17,7 @@ PORT=3000 DATABASE_URL=postgres://postgres:postgres@localhost:5432/pingpong node
 ## Build and run with Docker
 
 ```bash
-docker build -t ping-pong:4.1 .
+docker build -t ping-pong:4.4 .
 ```
 
 ## Deploy to Kubernetes (k3d)
@@ -26,16 +26,42 @@ docker build -t ping-pong:4.1 .
 kubectl apply -f ../namespaces/exercises.yaml
 kubectl apply -f ../postgres/secret.yaml
 kubectl apply -f ../postgres/service.yaml
-k3d image import ping-pong:4.1 -c k3s-default
-kubectl apply -f manifests/
+k3d image import ping-pong:4.4 -c k3s-default
+
+# ReadinessProbe Deployment (pre-canary): manifests/deployment.yaml
+# Canary Rollout (exercise 4.4): use rollout + AnalysisTemplate instead
+kubectl delete deployment ping-pong -n exercises --ignore-not-found
+kubectl apply -f manifests/analysis-template.yaml
+kubectl apply -f manifests/rollout.yaml
+kubectl apply -f manifests/service.yaml
 kubectl apply -f ../log_output/manifests/
 
-# Without the DB StatefulSet, ping-pong stays 0/1 Ready
-kubectl get po -n exercises
-
 kubectl apply -f ../postgres/statefulset.yaml
-# After Postgres is up: ping-pong → 1/1, log-output → 2/2
-kubectl get po -n exercises
+kubectl get rollout,analysistemplate,pods -n exercises
+```
+
+## Canary analysis (exercise 4.4)
+
+Requires [Argo Rollouts](https://argoproj.github.io/argo-rollouts/) and Prometheus (see `../monitoring`).
+
+[`manifests/analysis-template.yaml`](manifests/analysis-template.yaml) watches **namespace CPU rate sum** for 5 minutes:
+
+```promql
+sum(rate(container_cpu_usage_seconds_total{namespace="exercises",container!=""}[5m])) * 1000
+```
+
+- Interval `1m`, count `5` (~5 minutes)
+- Success when `result[0] < 200` (millicores; above a quiet baseline)
+- First breach → analysis fails → canary **reverts**
+
+[`manifests/rollout.yaml`](manifests/rollout.yaml) canary steps: `setWeight: 50` → pause → analysis → `setWeight: 100`.
+
+Optional CPU burn for demos: set `ENABLE_CPU_STRESS=true` on the Rollout container.
+
+If the threshold is set **too low** (e.g. `result[0] < 10` while baseline is ~15–40 mCPU), a normal update is aborted and the stable revision stays:
+
+```text
+RolloutAborted: ... Metric "cpu-usage" assessed Failed due to failed (2) > failureLimit (1)
 ```
 
 ## Deploy to GKE

@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: pingpong-cpu-analysis
+  namespace: exercises
+spec:
+  args:
+    - name: namespace
+      value: exercises
+  metrics:
+    - name: cpu-usage
+      # Check every minute for ~5 minutes
+      interval: 1m
+      count: 5
+      # Millicores for all containers in the namespace
+      # Baseline on k3d is typically tens of millicores; 200 leaves headroom.
+      # Set this too low (e.g. < 10) to prove updates are blocked.
+      successCondition: result[0] < 200
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: http://prometheus-kube-prometheus-prometheus.prometheus.svc.cluster.local:9090
+          query: |
+            sum(rate(container_cpu_usage_seconds_total{namespace="{{args.namespace}}",container!=""}[5m])) * 1000
