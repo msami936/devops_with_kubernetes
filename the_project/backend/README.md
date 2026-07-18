@@ -2,8 +2,9 @@
 
 Postgres-backed todo API.
 
-- `GET /todos` – list todos
+- `GET /todos` – list todos (`id`, `content`, `done`)
 - `POST /todos` – create a todo (`{ "content": "..." }`)
+- `PUT /todos/:id` – update done (`{ "done": true|false }`)
 
 Config via ConfigMap `todo-backend-config` and Secret `todo-postgres-secret` (`DATABASE_URL`).
 

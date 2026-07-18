@@ -30,8 +30,14 @@ const ensureSchema = async () => {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS todos (
       id SERIAL PRIMARY KEY,
-      content TEXT NOT NULL
+      content TEXT NOT NULL,
+      done BOOLEAN NOT NULL DEFAULT FALSE
     )
+  `)
+  // Existing DBs from earlier exercises may lack the column
+  await pool.query(`
+    ALTER TABLE todos
+    ADD COLUMN IF NOT EXISTS done BOOLEAN NOT NULL DEFAULT FALSE
   `)
 
   const existing = await pool.query('SELECT COUNT(*)::int AS count FROM todos')
@@ -66,17 +72,25 @@ const maintainDatabase = async () => {
 
 const listTodos = async () => {
   const result = await pool.query(
-    'SELECT id, content FROM todos ORDER BY id ASC'
+    'SELECT id, content, done FROM todos ORDER BY id ASC'
   )
   return result.rows
 }
 
 const createTodo = async (content) => {
   const result = await pool.query(
-    'INSERT INTO todos (content) VALUES ($1) RETURNING id, content',
+    'INSERT INTO todos (content) VALUES ($1) RETURNING id, content, done',
     [content]
   )
   return result.rows[0]
+}
+
+const updateTodoDone = async (id, done) => {
+  const result = await pool.query(
+    'UPDATE todos SET done = $2 WHERE id = $1 RETURNING id, content, done',
+    [id, done]
+  )
+  return result.rows[0] || null
 }
 
 const sendJson = (res, statusCode, body) => {
@@ -103,6 +117,18 @@ const readBody = (req) =>
   })
 
 const isTodosPath = (path) => path === TODOS_PATH || path === `${TODOS_PATH}/`
+
+const matchTodoIdPath = (path) => {
+  const prefix = `${TODOS_PATH}/`
+  if (!path.startsWith(prefix)) {
+    return null
+  }
+  const idPart = path.slice(prefix.length).replace(/\/$/, '')
+  if (!/^\d+$/.test(idPart)) {
+    return null
+  }
+  return Number(idPart)
+}
 
 const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
@@ -166,6 +192,32 @@ const server = http.createServer(async (req, res) => {
       const todo = await createTodo(content)
       console.log(`todo request accepted: ${content}`)
       sendJson(res, 201, todo)
+      return
+    }
+
+    const todoId = matchTodoIdPath(path)
+    if (req.method === 'PUT' && todoId !== null) {
+      const raw = await readBody(req)
+      let parsed
+      try {
+        parsed = JSON.parse(raw || '{}')
+      } catch {
+        sendJson(res, 400, { error: 'Invalid JSON' })
+        return
+      }
+
+      if (typeof parsed.done !== 'boolean') {
+        sendJson(res, 400, { error: 'done must be a boolean' })
+        return
+      }
+
+      const todo = await updateTodoDone(todoId, parsed.done)
+      if (!todo) {
+        sendJson(res, 404, { error: 'todo not found' })
+        return
+      }
+      console.log(`todo ${todoId} done=${parsed.done}`)
+      sendJson(res, 200, todo)
       return
     }
 

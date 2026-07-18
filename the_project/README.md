@@ -7,7 +7,7 @@ Configuration is managed with **Kustomize** (`kustomize/base` + overlays).
 ## Architecture
 
 - `todo-app` – HTML, form UI, image cache on PVC
-- `todo-backend` – `GET /todos` and `POST /todos` stored in Postgres (140-char limit; request logging)
+- `todo-backend` – `GET /todos`, `POST /todos`, `PUT /todos/:id` (`done` boolean; 140-char limit; request logging)
 - ConfigMaps: `todo-app-config`, `todo-backend-config`
 - Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
 - CronJob `wiki-todo`: hourly Wikipedia read todos
@@ -218,6 +218,14 @@ Screenshot when creating todo `exercise-3.12-gke-logs-144952`:
 # After deploy, open the Ingress URL and click "break the app"
 kubectl get pods -n project -w
 # A new todo-app pod should appear shortly after the liveness probe fails
+```
+
+## Mark todos done (exercise 4.5)
+
+`PUT /todos/<id>` with `{ "done": true }` sets the todo as completed. The UI shows a blue **Mark done** button for open items and green **Done** (strikethrough) for completed ones.
+
+```bash
+curl -X PUT http://INGRESS-IP/todos/1 -H 'Content-Type: application/json' -d '{"done":true}'
 ```
 
 ## Run locally

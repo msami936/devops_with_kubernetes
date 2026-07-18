@@ -247,6 +247,7 @@ const pageHtml = () => `<!DOCTYPE html>
     h2 {
       margin: 0 0 0.75rem;
       font-size: 1.15rem;
+      text-align: center;
     }
     .todo-list {
       list-style: none;
@@ -256,11 +257,47 @@ const pageHtml = () => `<!DOCTYPE html>
       gap: 0.75rem;
     }
     .todo-list li {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
       padding: 0.85rem 1rem;
       border: 1px solid var(--border);
       border-left: 5px solid var(--green);
       border-radius: 0.5rem;
-      background: #fff;
+      background: #f7f8fa;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+    }
+    .todo-list li.done {
+      border-left-color: #9aa3ad;
+    }
+    .todo-list li .content {
+      flex: 1;
+      min-width: 0;
+    }
+    .todo-list li.done .content {
+      text-decoration: line-through;
+      color: #555;
+    }
+    .mark-done {
+      flex-shrink: 0;
+      padding: 0.35rem 0.7rem;
+      border: none;
+      border-radius: 0.35rem;
+      background: #1976d2;
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .mark-done:hover {
+      background: #1565c0;
+    }
+    .done-label {
+      flex-shrink: 0;
+      color: var(--green);
+      font-weight: 700;
+      font-size: 0.95rem;
     }
     .break-wrap {
       margin-top: 2rem;
@@ -333,7 +370,50 @@ const pageHtml = () => `<!DOCTYPE html>
       todoList.innerHTML = '';
       todos.forEach((todo) => {
         const item = document.createElement('li');
-        item.textContent = todo.content;
+        if (todo.done) {
+          item.classList.add('done');
+        }
+
+        const content = document.createElement('span');
+        content.className = 'content';
+        content.textContent = todo.content;
+        item.appendChild(content);
+
+        if (todo.done) {
+          const label = document.createElement('span');
+          label.className = 'done-label';
+          label.textContent = 'Done';
+          item.appendChild(label);
+        } else {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'mark-done';
+          button.textContent = 'Mark done';
+          button.addEventListener('click', async () => {
+            errorMessage.textContent = '';
+            button.disabled = true;
+            try {
+              const response = await fetch(
+                APP_CONFIG.todosApiPath + '/' + todo.id,
+                {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ done: true }),
+                }
+              );
+              if (!response.ok) {
+                const errorBody = await response.json().catch(() => ({}));
+                throw new Error(errorBody.error || 'Failed to update todo');
+              }
+              await loadTodos();
+            } catch (error) {
+              errorMessage.textContent = error.message;
+              button.disabled = false;
+            }
+          });
+          item.appendChild(button);
+        }
+
         todoList.appendChild(item);
       });
     };
