@@ -175,6 +175,38 @@ kubectl top pods -n project
 kubectl describe pod -n project -l app=todo-app | findstr /i "Limits Requests"
 ```
 
+## GKE monitoring and application logs (exercise 3.12)
+
+GKE already had **workload logging** and **system monitoring** enabled on `dwk-cluster`. The Cloud Logging and Monitoring APIs were enabled so Logs Explorer / `gcloud logging read` work for this project.
+
+Where to find todo-app logs in GKE ([Kubernetes Engine Monitoring](https://cloud.google.com/monitoring/kubernetes-engine)):
+
+1. [Cloud Console → Logging → Logs Explorer](https://console.cloud.google.com/logs/query)
+2. Filter to the backend container, for example:
+
+```text
+resource.type="k8s_container"
+resource.labels.cluster_name="dwk-cluster"
+resource.labels.namespace_name="project"
+resource.labels.container_name="todo-backend"
+```
+
+3. Or from the GKE UI: **Kubernetes Engine → Workloads → todo-backend → Container logs** / **Logs**.
+
+CLI equivalent:
+
+```bash
+gcloud logging read \
+  'resource.type="k8s_container" AND resource.labels.namespace_name="project" AND resource.labels.container_name="todo-backend"' \
+  --limit=20 --freshness=1h
+```
+
+After `POST /todos`, stdout shows lines like `todo request received` and `todo request accepted`.
+
+Screenshot when creating todo `exercise-3.12-gke-logs-144952`:
+
+![GKE Cloud Logging: todo create](images/gke-todo-create-logs.png)
+
 ## Run locally
 
 Terminal 1 (backend):
