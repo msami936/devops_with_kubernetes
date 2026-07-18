@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: ping-pong
-          image: ping-pong:2.7
+          image: ping-pong:4.1
           imagePullPolicy: Never
           env:
             - name: PORT
@@ -27,3 +27,10 @@ spec:
                   key: DATABASE_URL
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 1

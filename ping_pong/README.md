@@ -1,6 +1,7 @@
 # Ping-pong app
 
 Responds to `GET /` with `pong N` and exposes `GET /pings` with the current pong count.
+`GET /healthz` returns 200 when Postgres is reachable (used as a ReadinessProbe).
 On GKE, Gateway rewrites external `/pingpong` → `/` so the cluster URL does not leak into the app.
 The counter is stored in Postgres.
 
@@ -16,19 +17,25 @@ PORT=3000 DATABASE_URL=postgres://postgres:postgres@localhost:5432/pingpong node
 ## Build and run with Docker
 
 ```bash
-docker build -t ping-pong:2.7 .
+docker build -t ping-pong:4.1 .
 ```
 
 ## Deploy to Kubernetes (k3d)
 
 ```bash
 kubectl apply -f ../namespaces/exercises.yaml
-kubectl apply -f ../postgres/
-k3d image import ping-pong:2.7 -c k3s-default
+kubectl apply -f ../postgres/secret.yaml
+kubectl apply -f ../postgres/service.yaml
+k3d image import ping-pong:4.1 -c k3s-default
 kubectl apply -f manifests/
 kubectl apply -f ../log_output/manifests/
 
-kubectl get pods,svc,statefulset,pvc -n exercises
+# Without the DB StatefulSet, ping-pong stays 0/1 Ready
+kubectl get po -n exercises
+
+kubectl apply -f ../postgres/statefulset.yaml
+# After Postgres is up: ping-pong → 1/1, log-output → 2/2
+kubectl get po -n exercises
 ```
 
 ## Deploy to GKE

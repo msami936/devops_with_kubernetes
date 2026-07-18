@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: log-generator
-          image: log-output:2.5
+          image: log-output:4.1
           imagePullPolicy: Never
           command: ["node", "generator.js"]
           env:
@@ -25,7 +25,7 @@ spec:
             - name: shared-log
               mountPath: /shared
         - name: log-reader
-          image: log-output:2.5
+          image: log-output:4.1
           imagePullPolicy: Never
           command: ["node", "reader.js"]
           env:
@@ -44,6 +44,13 @@ spec:
                   key: MESSAGE
           ports:
             - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 1
           volumeMounts:
             - name: shared-log
               mountPath: /shared

@@ -3,7 +3,7 @@
 Split into two containers in one pod that share an `emptyDir` volume:
 
 1. **log-generator** – creates a random string on startup and appends `timestamp: string` to a file every 5 seconds
-2. **log-reader** – HTTP server that returns ConfigMap data, the latest log line, and the ping-pong count over HTTP
+2. **log-reader** – HTTP server that returns ConfigMap data, the latest log line, and the ping-pong count over HTTP. `GET /healthz` is ready only when Ping-pong data can be fetched (ReadinessProbe).
 
 Config comes from ConfigMap `log-output-config` ([ConfigMaps](https://kubernetes.io/docs/concepts/configuration/configmap/), [configure a Pod to use a ConfigMap](https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/)):
 
@@ -24,7 +24,7 @@ Open http://localhost:3000
 ## Build and run with Docker
 
 ```bash
-docker build -t log-output:2.5 .
+docker build -t log-output:4.1 .
 ```
 
 ## Deploy to Kubernetes (k3d)
@@ -38,7 +38,7 @@ k3d cluster create k3s-default -p "8081:80@loadbalancer"
 Then:
 
 ```bash
-k3d image import log-output:2.5 ping-pong:2.1 -c k3s-default
+k3d image import log-output:4.1 ping-pong:4.1 -c k3s-default
 
 kubectl apply -f ../namespaces/exercises.yaml
 kubectl apply -f manifests/
@@ -68,8 +68,8 @@ Manifests: `manifests-gke/` (Deployment + Service + HTTPRoute).
 Shared Gateway: `../ping_pong/manifests-gke/gateway.yaml`
 
 ```bash
-docker build -t msami936/log-output:3.2 .
-docker push msami936/log-output:3.2
+docker build -t msami936/log-output:4.1 .
+docker push msami936/log-output:4.1
 
 kubectl apply -f ../namespaces/exercises.yaml
 kubectl apply -f ../ping_pong/manifests-gke/postgres.yaml

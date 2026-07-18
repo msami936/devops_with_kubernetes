@@ -14,21 +14,9 @@ const DATABASE_URL = requiredEnv('DATABASE_URL')
 
 const pool = new Pool({ connectionString: DATABASE_URL })
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+let dbReady = false
 
-const waitForDatabase = async () => {
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    try {
-      await pool.query('SELECT 1')
-      console.log('Connected to Postgres')
-      return
-    } catch (error) {
-      console.log(`Waiting for Postgres (attempt ${attempt}/30): ${error.message}`)
-      await sleep(2000)
-    }
-  }
-  throw new Error('Postgres was not ready in time')
-}
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 const ensureSchema = async () => {
   await pool.query(`
@@ -42,6 +30,27 @@ const ensureSchema = async () => {
     VALUES ('pingpong', 0)
     ON CONFLICT (name) DO NOTHING
   `)
+}
+
+const maintainDatabase = async () => {
+  for (;;) {
+    try {
+      await pool.query('SELECT 1')
+      if (!dbReady) {
+        await ensureSchema()
+        dbReady = true
+        console.log('Connected to Postgres')
+      }
+    } catch (error) {
+      if (dbReady) {
+        console.log(`Lost Postgres connection: ${error.message}`)
+      } else {
+        console.log(`Waiting for Postgres: ${error.message}`)
+      }
+      dbReady = false
+    }
+    await sleep(2000)
+  }
 }
 
 const getCount = async () => {
@@ -63,6 +72,24 @@ const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   try {
+    // Ready only when the database connection works
+    if (req.method === 'GET' && path === '/healthz') {
+      if (dbReady) {
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' })
+        res.end('ok\n')
+      } else {
+        res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' })
+        res.end('database unavailable\n')
+      }
+      return
+    }
+
+    if (!dbReady) {
+      res.writeHead(503, { 'Content-Type': 'text/plain; charset=utf-8' })
+      res.end('database unavailable\n')
+      return
+    }
+
     // App serves ping-pong at `/`. Gateway rewrites external /pingpong → /
     if (req.method === 'GET' && isPongPath(path)) {
       const counter = await getCount()
@@ -83,20 +110,17 @@ const server = http.createServer(async (req, res) => {
     res.end('Not found\n')
   } catch (error) {
     console.error(error)
+    dbReady = false
     res.writeHead(500, { 'Content-Type': 'text/plain' })
     res.end('Internal server error\n')
   }
 })
 
-const start = async () => {
-  await waitForDatabase()
-  await ensureSchema()
-  server.listen(PORT, () => {
-    console.log(`Server started in port ${PORT}`)
-  })
-}
+server.listen(PORT, () => {
+  console.log(`Server started in port ${PORT}`)
+})
 
-start().catch((error) => {
+maintainDatabase().catch((error) => {
   console.error(error)
   process.exit(1)
 })

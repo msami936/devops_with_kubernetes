@@ -46,8 +46,33 @@ const fetchPongCount = () =>
     })
   })
 
+const canReachPingpong = () =>
+  new Promise((resolve) => {
+    const request = http.get(PINGPONG_URL, (response) => {
+      response.resume()
+      resolve(response.statusCode >= 200 && response.statusCode < 300)
+    })
+
+    request.on('error', () => {
+      resolve(false)
+    })
+
+    request.setTimeout(2000, () => {
+      request.destroy()
+      resolve(false)
+    })
+  })
+
 const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
+
+  // Ready only when Ping-pong data can be received
+  if (req.method === 'GET' && path === '/healthz') {
+    const ok = await canReachPingpong()
+    res.writeHead(ok ? 200 : 503, { 'Content-Type': 'text/plain; charset=utf-8' })
+    res.end(ok ? 'ok\n' : 'pingpong unavailable\n')
+    return
+  }
 
   if (req.method === 'GET' && (path === '/' || path === '/status')) {
     const fileContent = readInfoFile()
