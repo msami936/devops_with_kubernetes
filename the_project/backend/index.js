@@ -16,6 +16,8 @@ const DATABASE_URL = requiredEnv('DATABASE_URL')
 
 const pool = new Pool({ connectionString: DATABASE_URL })
 
+let dbReady = false
+
 const seedTodos = [
   'Learn Kubernetes basics',
   'Deploy application to cluster',
@@ -23,20 +25,6 @@ const seedTodos = [
 ]
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
-const waitForDatabase = async () => {
-  for (let attempt = 1; attempt <= 30; attempt += 1) {
-    try {
-      await pool.query('SELECT 1')
-      console.log('Connected to Postgres')
-      return
-    } catch (error) {
-      console.log(`Waiting for Postgres (attempt ${attempt}/30): ${error.message}`)
-      await sleep(2000)
-    }
-  }
-  throw new Error('Postgres was not ready in time')
-}
 
 const ensureSchema = async () => {
   await pool.query(`
@@ -52,6 +40,27 @@ const ensureSchema = async () => {
       await pool.query('INSERT INTO todos (content) VALUES ($1)', [content])
     }
     console.log('Seeded initial todos')
+  }
+}
+
+const maintainDatabase = async () => {
+  for (;;) {
+    try {
+      await pool.query('SELECT 1')
+      if (!dbReady) {
+        await ensureSchema()
+        dbReady = true
+        console.log('Connected to Postgres')
+      }
+    } catch (error) {
+      if (dbReady) {
+        console.log(`Lost Postgres connection: ${error.message}`)
+      } else {
+        console.log(`Waiting for Postgres: ${error.message}`)
+      }
+      dbReady = false
+    }
+    await sleep(2000)
   }
 }
 
@@ -99,9 +108,24 @@ const server = http.createServer(async (req, res) => {
   const path = req.url.split('?')[0]
 
   try {
-    // GKE Ingress health checks hit `/`
+    // Ready when the database connection works
+    if (req.method === 'GET' && path === '/healthz') {
+      if (dbReady) {
+        sendJson(res, 200, { status: 'ok' })
+      } else {
+        sendJson(res, 500, { status: 'unhealthy', reason: 'database unavailable' })
+      }
+      return
+    }
+
+    // GKE Ingress health checks hit `/` (keep always OK for LB)
     if (req.method === 'GET' && (path === '/' || path === '')) {
       sendJson(res, 200, { status: 'ok' })
+      return
+    }
+
+    if (!dbReady) {
+      sendJson(res, 503, { error: 'database unavailable' })
       return
     }
 
@@ -149,19 +173,16 @@ const server = http.createServer(async (req, res) => {
     res.end('Not found\n')
   } catch (error) {
     console.error(error)
+    dbReady = false
     sendJson(res, 500, { error: 'Internal server error' })
   }
 })
 
-const start = async () => {
-  await waitForDatabase()
-  await ensureSchema()
-  server.listen(PORT, () => {
-    console.log(`Todo backend started in port ${PORT}`)
-  })
-}
+server.listen(PORT, () => {
+  console.log(`Todo backend started in port ${PORT}`)
+})
 
-start().catch((error) => {
+maintainDatabase().catch((error) => {
   console.error(error)
   process.exit(1)
 })

@@ -51,3 +51,4 @@ Submissions for the [DevOps with Kubernetes](https://devopswithkubernetes.com/) 
 ### Chapter 5
 
 - [4.1.](https://github.com/msami936/devops_with_kubernetes/tree/4.1/ping_pong)
+- [4.2.](https://github.com/msami936/devops_with_kubernetes/tree/4.2/the_project)

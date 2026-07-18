@@ -20,11 +20,15 @@ const IMAGE_ROUTE = requiredEnv('IMAGE_ROUTE')
 const IMAGE_FILENAME = requiredEnv('IMAGE_FILENAME')
 const META_FILENAME = requiredEnv('META_FILENAME')
 const MAX_TODO_LENGTH = Number(requiredEnv('MAX_TODO_LENGTH'))
+const BACKEND_HEALTH_URL =
+  process.env.BACKEND_HEALTH_URL || 'http://todo-backend/healthz'
 
 const IMAGE_FILE = path.join(DATA_DIR, IMAGE_FILENAME)
 const META_FILE = path.join(DATA_DIR, META_FILENAME)
 
 fs.mkdirSync(DATA_DIR, { recursive: true })
+
+let isHealthy = true
 
 const readMeta = () => {
   try {
@@ -94,6 +98,72 @@ const ensureImage = async () => {
   writeMeta({ fetchedAt: Date.now(), serveStaleOnce: false })
 }
 
+const checkBackendHealth = () =>
+  new Promise((resolve) => {
+    const request = http.get(BACKEND_HEALTH_URL, (response) => {
+      response.resume()
+      resolve(response.statusCode >= 200 && response.statusCode < 300)
+    })
+    request.on('error', () => resolve(false))
+    request.setTimeout(2000, () => {
+      request.destroy()
+      resolve(false)
+    })
+  })
+
+const sendJson = (res, statusCode, body) => {
+  const payload = JSON.stringify(body)
+  res.writeHead(statusCode, {
+    'Content-Type': 'application/json; charset=utf-8',
+    'Content-Length': Buffer.byteLength(payload),
+  })
+  res.end(payload)
+}
+
+const failureHtml = () => `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>System Failure</title>
+  <style>
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: #fde8e8;
+      font-family: system-ui, sans-serif;
+    }
+    .box {
+      max-width: 28rem;
+      margin: 1rem;
+      padding: 2rem 1.5rem;
+      border: 2px solid #b00020;
+      border-radius: 0.75rem;
+      background: #ffe4e4;
+      color: #8a0018;
+      text-align: center;
+    }
+    h1 {
+      margin: 0 0 0.75rem;
+      font-size: 1.75rem;
+    }
+    p {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>System Failure</h1>
+    <p>The Todo App is currently unhealthy. Please wait for recovery.</p>
+  </div>
+</body>
+</html>
+`
+
 const pageHtml = () => `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,6 +177,8 @@ const pageHtml = () => `<!DOCTYPE html>
       --border: #dde3ea;
       --text: #1a1a1a;
       --muted: #777;
+      --danger: #c62828;
+      --danger-dark: #8e0000;
     }
     * { box-sizing: border-box; }
     body {
@@ -190,6 +262,23 @@ const pageHtml = () => `<!DOCTYPE html>
       border-radius: 0.5rem;
       background: #fff;
     }
+    .break-wrap {
+      margin-top: 2rem;
+      text-align: center;
+    }
+    .break-button {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.4rem;
+      background: var(--danger);
+      color: white;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .break-button:hover {
+      background: var(--danger-dark);
+    }
     footer {
       margin-top: 1.5rem;
       color: var(--muted);
@@ -217,6 +306,9 @@ const pageHtml = () => `<!DOCTYPE html>
   <p class="error" id="error-message"></p>
   <h2>Todos</h2>
   <ul class="todo-list" id="todo-list"></ul>
+  <div class="break-wrap">
+    <button type="button" class="break-button" id="break-button">break the app</button>
+  </div>
   <footer>DevOps with Kubernetes 2026</footer>
   <script>
     const APP_CONFIG = {
@@ -229,6 +321,7 @@ const pageHtml = () => `<!DOCTYPE html>
     const charCount = document.getElementById('char-count');
     const todoList = document.getElementById('todo-list');
     const errorMessage = document.getElementById('error-message');
+    const breakButton = document.getElementById('break-button');
 
     const syncState = () => {
       const length = input.value.length;
@@ -284,6 +377,17 @@ const pageHtml = () => `<!DOCTYPE html>
       }
     });
 
+    breakButton.addEventListener('click', async () => {
+      breakButton.disabled = true;
+      try {
+        await fetch('/break', { method: 'POST' });
+        window.location.reload();
+      } catch (error) {
+        errorMessage.textContent = error.message;
+        breakButton.disabled = false;
+      }
+    });
+
     syncState();
     loadTodos().catch((error) => {
       errorMessage.textContent = error.message;
@@ -297,7 +401,45 @@ const server = http.createServer(async (req, res) => {
   const urlPath = req.url.split('?')[0]
 
   try {
+    if (req.method === 'GET' && urlPath === '/healthz') {
+      if (!isHealthy) {
+        sendJson(res, 500, { status: 'unhealthy' })
+        return
+      }
+      sendJson(res, 200, { status: 'ok' })
+      return
+    }
+
+    if (req.method === 'GET' && urlPath === '/readyz') {
+      if (!isHealthy) {
+        sendJson(res, 500, { status: 'unhealthy' })
+        return
+      }
+      const backendOk = await checkBackendHealth()
+      if (!backendOk) {
+        sendJson(res, 500, {
+          status: 'unhealthy',
+          reason: 'database unavailable',
+        })
+        return
+      }
+      sendJson(res, 200, { status: 'ok' })
+      return
+    }
+
+    if (req.method === 'POST' && urlPath === '/break') {
+      isHealthy = false
+      console.log('App marked unhealthy via /break')
+      sendJson(res, 200, { status: 'broken' })
+      return
+    }
+
     if (req.method === 'GET' && (urlPath === '/' || urlPath === '')) {
+      if (!isHealthy) {
+        res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' })
+        res.end(failureHtml())
+        return
+      }
       await ensureImage()
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(pageHtml())
@@ -313,14 +455,6 @@ const server = http.createServer(async (req, res) => {
       }
       res.writeHead(200, { 'Content-Type': 'image/jpeg' })
       fs.createReadStream(IMAGE_FILE).pipe(res)
-      return
-    }
-
-    if (req.method === 'GET' && urlPath === '/crash') {
-      res.writeHead(200, { 'Content-Type': 'text/plain' })
-      res.end('Crashing...\n')
-      console.log('Crash endpoint called, exiting')
-      setTimeout(() => process.exit(1), 100)
       return
     }
 

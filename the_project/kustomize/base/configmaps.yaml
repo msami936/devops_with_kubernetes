@@ -12,6 +12,7 @@ data:
   IMAGE_FILENAME: image.jpg
   META_FILENAME: image-meta.json
   MAX_TODO_LENGTH: "140"
+  BACKEND_HEALTH_URL: http://todo-backend/healthz
 ---
 apiVersion: v1
 kind: ConfigMap

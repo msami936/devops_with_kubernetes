@@ -207,6 +207,19 @@ Screenshot when creating todo `exercise-3.12-gke-logs-144952`:
 
 ![GKE Cloud Logging: todo create](images/gke-todo-create-logs.png)
 
+## Health probes and break button (exercise 4.2)
+
+- **todo-backend** `GET /healthz` — 200 when Postgres is reachable (readiness probe)
+- **todo-app** `GET /healthz` — 200 while `isHealthy` is true (liveness probe)
+- **todo-app** `GET /readyz` — ready when healthy **and** backend/DB is up (readiness probe)
+- **todo-app** `POST /break` — sets `isHealthy = false`, serves the System Failure page, fails `/healthz`, and kubelet restarts the pod
+
+```bash
+# After deploy, open the Ingress URL and click "break the app"
+kubectl get pods -n project -w
+# A new todo-app pod should appear shortly after the liveness probe fails
+```
+
 ## Run locally
 
 Terminal 1 (backend):
