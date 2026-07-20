@@ -1,4 +1,5 @@
 const http = require('http')
+const { connect, StringCodec } = require('nats')
 const { Pool } = require('pg')
 
 const requiredEnv = (name) => {
@@ -13,10 +14,13 @@ const PORT = Number(requiredEnv('PORT'))
 const TODOS_PATH = requiredEnv('TODOS_PATH')
 const MAX_TODO_LENGTH = Number(requiredEnv('MAX_TODO_LENGTH'))
 const DATABASE_URL = requiredEnv('DATABASE_URL')
+const NATS_URL = process.env.NATS_URL || ''
 
 const pool = new Pool({ connectionString: DATABASE_URL })
+const sc = StringCodec()
 
 let dbReady = false
+let natsConnection = null
 
 const seedTodos = [
   'Learn Kubernetes basics',
@@ -91,6 +95,45 @@ const updateTodoDone = async (id, done) => {
     [id, done]
   )
   return result.rows[0] || null
+}
+
+const publishTodoEvent = async (subject, todo) => {
+  if (!natsConnection) {
+    return
+  }
+  try {
+    natsConnection.publish(subject, sc.encode(JSON.stringify(todo)))
+    console.log(`published ${subject} id=${todo.id}`)
+  } catch (error) {
+    console.error(`failed to publish ${subject}: ${error.message}`)
+  }
+}
+
+const maintainNats = async () => {
+  if (!NATS_URL) {
+    console.log('NATS_URL not set; todo events will not be published')
+    return
+  }
+
+  for (;;) {
+    try {
+      if (!natsConnection) {
+        const nc = await connect({ servers: NATS_URL })
+        natsConnection = nc
+        console.log(`Connected to NATS at ${NATS_URL}`)
+        nc.closed().then((err) => {
+          console.log(`Lost NATS connection${err ? `: ${err.message}` : ''}`)
+          if (natsConnection === nc) {
+            natsConnection = null
+          }
+        })
+      }
+    } catch (error) {
+      console.log(`Waiting for NATS: ${error.message}`)
+      natsConnection = null
+    }
+    await sleep(2000)
+  }
 }
 
 const sendJson = (res, statusCode, body) => {
@@ -191,6 +234,7 @@ const server = http.createServer(async (req, res) => {
 
       const todo = await createTodo(content)
       console.log(`todo request accepted: ${content}`)
+      await publishTodoEvent('todos.created', todo)
       sendJson(res, 201, todo)
       return
     }
@@ -217,6 +261,7 @@ const server = http.createServer(async (req, res) => {
         return
       }
       console.log(`todo ${todoId} done=${parsed.done}`)
+      await publishTodoEvent('todos.updated', todo)
       sendJson(res, 200, todo)
       return
     }
@@ -237,4 +282,8 @@ server.listen(PORT, () => {
 maintainDatabase().catch((error) => {
   console.error(error)
   process.exit(1)
+})
+
+maintainNats().catch((error) => {
+  console.error(error)
 })

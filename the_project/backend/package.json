@@ -4,6 +4,7 @@
   "private": true,
   "main": "index.js",
   "dependencies": {
+    "nats": "^2.28.2",
     "pg": "^8.13.1"
   }
 }

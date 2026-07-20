@@ -13,4 +13,7 @@ images:
     newTag: "4.5"
   - name: todo-backend
     newName: msami936/todo-backend
-    newTag: "4.5"
+    newTag: "4.6"
+  - name: todo-broadcaster
+    newName: msami936/todo-broadcaster
+    newTag: "4.6"

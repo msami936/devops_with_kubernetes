@@ -8,8 +8,11 @@ Configuration is managed with **Kustomize** (`kustomize/base` + overlays).
 
 - `todo-app` – HTML, form UI, image cache on PVC
 - `todo-backend` – `GET /todos`, `POST /todos`, `PUT /todos/:id` (`done` boolean; 140-char limit; request logging)
-- ConfigMaps: `todo-app-config`, `todo-backend-config`
+- `nats` – messaging bus for todo create/update events
+- `broadcaster` – 6 replicas; NATS queue group → Generic webhook (no duplicate delivers)
+- ConfigMaps: `todo-app-config`, `todo-backend-config`, `broadcaster-config`
 - Secret + StatefulSet: `todo-postgres-secret`, `todo-postgres`
+- Secret: `broadcaster-secret` (`BROADCASTER_URL`)
 - CronJob `wiki-todo`: hourly Wikipedia read todos
 - CronJob `todo-db-backup`: daily `pg_dump` → Google Cloud Storage
 - Resource requests/limits on app, backend, Postgres, and CronJobs
@@ -228,6 +231,31 @@ kubectl get pods -n project -w
 curl -X PUT http://INGRESS-IP/todos/1 -H 'Content-Type: application/json' -d '{"done":true}'
 ```
 
+## Broadcaster via NATS (exercise 4.6)
+
+On create/update the backend publishes to NATS subjects `todos.created` / `todos.updated`. The **broadcaster** Deployment (6 replicas) joins queue group `broadcasters`, so only one replica handles each message and posts a Generic webhook payload:
+
+```json
+{ "user": "bot", "message": "A todo was created: ..." }
+```
+
+Create the webhook secret (not stored in git), then apply:
+
+```bash
+# Example: https://webhook.site/<uuid>
+kubectl -n project create secret generic broadcaster-secret \
+  --from-literal=BROADCASTER_URL='https://webhook.site/<uuid>' \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+docker build -t msami936/todo-backend:4.6 ./backend
+docker build -t msami936/todo-broadcaster:4.6 ./broadcaster
+docker push msami936/todo-backend:4.6
+docker push msami936/todo-broadcaster:4.6
+
+kubectl apply -k the_project/kustomize/overlays/gke
+kubectl -n project get deploy broadcaster   # expect 6/6
+```
+
 ## Run locally
 
 Terminal 1 (backend):
@@ -236,6 +264,7 @@ Terminal 1 (backend):
 cd backend
 PORT=3001 TODOS_PATH=/todos MAX_TODO_LENGTH=140 \
 DATABASE_URL=postgres://postgres:postgres@localhost:5432/todos \
+NATS_URL=nats://127.0.0.1:4222 \
 node index.js
 ```
 

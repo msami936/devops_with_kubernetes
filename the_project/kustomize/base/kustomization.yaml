@@ -7,7 +7,9 @@ resources:
   - namespace.yaml
   - configmaps.yaml
   - postgres.yaml
+  - nats.yaml
   - todo-app.yaml
   - todo-backend.yaml
+  - broadcaster.yaml
   - cronjob-wiki-todo.yaml
   - cronjob-db-backup.yaml

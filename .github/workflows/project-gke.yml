@@ -69,8 +69,10 @@ jobs:
           TAG="${{ github.sha }}"
           docker build -t "${DOCKERHUB_USER}/todo-app:${TAG}" .
           docker build -t "${DOCKERHUB_USER}/todo-backend:${TAG}" ./backend
+          docker build -t "${DOCKERHUB_USER}/todo-broadcaster:${TAG}" ./broadcaster
           docker push "${DOCKERHUB_USER}/todo-app:${TAG}"
           docker push "${DOCKERHUB_USER}/todo-backend:${TAG}"
+          docker push "${DOCKERHUB_USER}/todo-broadcaster:${TAG}"
           echo "IMAGE_TAG=${TAG}" >> "$GITHUB_ENV"
 
       - name: Install Kustomize
@@ -85,9 +87,12 @@ jobs:
           kustomize edit set namespace "${NAMESPACE}"
           kustomize edit set image \
             "todo-app=${DOCKERHUB_USER}/todo-app:${IMAGE_TAG}" \
-            "todo-backend=${DOCKERHUB_USER}/todo-backend:${IMAGE_TAG}"
+            "todo-backend=${DOCKERHUB_USER}/todo-backend:${IMAGE_TAG}" \
+            "todo-broadcaster=${DOCKERHUB_USER}/todo-broadcaster:${IMAGE_TAG}"
 
           kubectl apply -k .
           kubectl rollout status deployment/todo-app -n "${NAMESPACE}" --timeout=300s
           kubectl rollout status deployment/todo-backend -n "${NAMESPACE}" --timeout=300s
+          kubectl rollout status deployment/nats -n "${NAMESPACE}" --timeout=300s
+          kubectl rollout status deployment/broadcaster -n "${NAMESPACE}" --timeout=300s
           kubectl get pods,svc,ingress -n "${NAMESPACE}"

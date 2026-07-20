@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: broadcaster
+spec:
+  replicas: 6
+  selector:
+    matchLabels:
+      app: broadcaster
+  template:
+    metadata:
+      labels:
+        app: broadcaster
+    spec:
+      containers:
+        - name: broadcaster
+          image: todo-broadcaster
+          envFrom:
+            - configMapRef:
+                name: broadcaster-config
+          env:
+            - name: BROADCASTER_URL
+              valueFrom:
+                secretKeyRef:
+                  name: broadcaster-secret
+                  key: BROADCASTER_URL
+          resources:
+            requests:
+              cpu: 5m
+              memory: 16Mi
+            limits:
+              cpu: 50m
+              memory: 64Mi
