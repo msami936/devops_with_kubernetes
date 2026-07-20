@@ -64,3 +64,4 @@ Submissions for the [DevOps with Kubernetes](https://devopswithkubernetes.com/) 
 ### Chapter 6
 
 - [5.1.](https://github.com/msami936/devops_with_kubernetes/tree/5.1/dummysite)
+- [5.2.](https://github.com/msami936/devops_with_kubernetes/tree/5.2/istio)
