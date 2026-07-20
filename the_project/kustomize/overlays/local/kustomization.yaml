@@ -26,7 +26,19 @@ patches:
       kind: PersistentVolumeClaim
       metadata:
         name: todo-image-pvc
-  - path: todo-app-emptydir.yaml
+  - target:
+      kind: Deployment
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+      - op: replace
+        path: /spec/template/spec/volumes
+        value:
+          - name: todo-image-data
+            emptyDir: {}
 
 images:
   - name: todo-app
