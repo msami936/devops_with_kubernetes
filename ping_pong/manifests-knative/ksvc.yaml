@@ -1,0 +1,41 @@
+# Converted from Deployment per
+# https://knative.dev/docs/serving/convert-deployment-to-knative-service/
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ping-pong
+  namespace: exercises
+spec:
+  template:
+    metadata:
+      annotations:
+        # Allow a bit longer for Postgres reconnect after scale-from-zero
+        autoscaling.knative.dev/scale-down-delay: "30s"
+    spec:
+      containerConcurrency: 0
+      containers:
+        - image: dev.local/ping-pong:5.7
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 2
+            periodSeconds: 3
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

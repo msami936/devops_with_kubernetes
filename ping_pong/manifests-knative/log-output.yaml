@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-output
+  namespace: exercises
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-output
+  template:
+    metadata:
+      labels:
+        app: log-output
+        version: latest
+    spec:
+      containers:
+        - name: log-generator
+          image: msami936/log-output:5.3
+          imagePullPolicy: Always
+          command: ["node", "generator.js"]
+          env:
+            - name: LOG_FILE
+              value: /shared/log.txt
+          volumeMounts:
+            - name: shared-log
+              mountPath: /shared
+        - name: log-reader
+          image: msami936/log-output:5.3
+          imagePullPolicy: Always
+          command: ["node", "reader.js"]
+          env:
+            - name: PORT
+              value: "3000"
+            - name: LOG_FILE
+              value: /shared/log.txt
+            # Fully qualified DNS avoids Knative Host-routing issues
+            - name: PINGPONG_URL
+              value: http://ping-pong.exercises.svc.cluster.local/pings
+            - name: INFO_FILE
+              value: /config/information.txt
+            - name: MESSAGE
+              valueFrom:
+                configMapKeyRef:
+                  name: log-output-config
+                  key: MESSAGE
+            # Greeter is optional on the Knative cluster; reader tolerates failure
+            - name: GREETER_URL
+              value: http://127.0.0.1:9/
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          volumeMounts:
+            - name: shared-log
+              mountPath: /shared
+            - name: log-output-config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: shared-log
+          emptyDir: {}
+        - name: log-output-config
+          configMap:
+            name: log-output-config
+            items:
+              - key: information.txt
+                path: information.txt
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: log-output
+  namespace: exercises
+spec:
+  type: ClusterIP
+  selector:
+    app: log-output
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: log-output-config
+  namespace: exercises
+data:
+  MESSAGE: hello serverless
+  information.txt: |
+    this text is from file

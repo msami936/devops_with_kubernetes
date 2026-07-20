@@ -1,0 +1,31 @@
+# Example HTTPRoute tip from the exercise (needs a Gateway implementation).
+# On this k3d Knative cluster we access ping-pong via Kourier + Host header instead:
+#   curl -H "Host: ping-pong.exercises.<IP>.sslip.io" http://localhost:18081/
+#
+# If you have Gateway API + a controller (e.g. Istio), you can enable browser path
+# /pingpong with a Host rewrite like:
+#
+# rules:
+#   - matches:
+#       - path:
+#           type: PathPrefix
+#           value: /pingpong
+#     filters:
+#       - type: URLRewrite
+#         urlRewrite:
+#           hostname: ping-pong.exercises.172.21.0.3.sslip.io
+#           path:
+#             type: ReplacePrefixMatch
+#             replacePrefixMatch: /
+#     backendRefs:
+#       - name: kourier
+#         namespace: kourier-system
+#         port: 80
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pingpong-httproute-tip
+  namespace: exercises
+data:
+  note: |
+    See README for Host-header access and optional Gateway API URLRewrite tip.

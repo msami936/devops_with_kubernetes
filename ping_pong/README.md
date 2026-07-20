@@ -5,7 +5,11 @@ Responds to `GET /` with `pong N` and exposes `GET /pings` with the current pong
 On GKE, Gateway rewrites external `/pingpong` → `/` so the cluster URL does not leak into the app.
 The counter is stored in Postgres.
 
-## Run locally
+## Service mesh / serverless
+
+- Mesh edition greeter traffic split: see [`../log_output/MESH.md`](../log_output/MESH.md)
+- **Knative serverless ping-pong (5.7):** [`manifests-knative/`](./manifests-knative/)
+
 
 Requires a local Postgres and:
 
