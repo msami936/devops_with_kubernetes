@@ -10,6 +10,40 @@ Config comes from ConfigMap `log-output-config` ([ConfigMaps](https://kubernetes
 - env `MESSAGE`
 - file `information.txt` mounted at `/config/information.txt`
 
+## GitOps with Flux (exercise 4.7)
+
+Log output is synced from Git by [Flux](https://fluxcd.io/) on the local k3d cluster.
+
+- Flux bootstrap path: [`clusters/k3d/`](../clusters/k3d/)
+- App sync: [`clusters/k3d/log-output.yaml`](../clusters/k3d/log-output.yaml) → `./log_output/manifests`
+- Interval: 1 minute (or `flux reconcile kustomization log-output --with-source`)
+
+After bootstrap:
+
+```bash
+# Install Flux CLI, then (once):
+export GITHUB_TOKEN=...   # PAT with repo scope
+kubectl config use-context k3d-k3s-default
+flux bootstrap github \
+  --owner=msami936 \
+  --repository=devops_with_kubernetes \
+  --branch=main \
+  --path=./clusters/k3d \
+  --personal \
+  --token-auth
+```
+
+Change manifests under `log_output/manifests/`, commit, and push — Flux applies the update automatically.
+
+```bash
+# Force an immediate sync while testing
+flux reconcile source git log-output
+flux reconcile kustomization log-output
+
+kubectl get cm log-output-config -n exercises -o yaml
+kubectl get gitrepository,kustomization -n flux-system
+```
+
 ## Run locally
 
 ```bash
@@ -27,7 +61,7 @@ Open http://localhost:3000
 docker build -t log-output:4.1 .
 ```
 
-## Deploy to Kubernetes (k3d)
+## Deploy to Kubernetes (k3d) — manual (pre-GitOps)
 
 Log output and Ping-pong run in the `exercises` namespace.
 

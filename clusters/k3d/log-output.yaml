@@ -1,0 +1,23 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: log-output
+  namespace: flux-system
+spec:
+  interval: 1m
+  ref:
+    branch: main
+  url: https://github.com/msami936/devops_with_kubernetes
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: log-output
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./log_output/manifests
+  prune: true
+  sourceRef:
+    kind: GitRepository
+    name: log-output
