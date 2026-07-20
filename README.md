@@ -60,3 +60,7 @@ Submissions for the [DevOps with Kubernetes](https://devopswithkubernetes.com/) 
 - [4.8.](https://github.com/msami936/devops_with_kubernetes/tree/4.8/the_project)
 - [4.9.](https://github.com/msami936/devops_with_kubernetes/tree/4.9/the_project)
 - [4.10.](https://github.com/msami936/devops_with_kubernetes/tree/4.10/the_project) ([code](https://github.com/msami936/todo-app-code) · [configs](https://github.com/msami936/todo-app-configs))
+
+### Chapter 6
+
+- [5.1.](https://github.com/msami936/devops_with_kubernetes/tree/5.1/dummysite)
