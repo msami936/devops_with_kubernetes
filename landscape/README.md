@@ -45,11 +45,3 @@ Annotated summary map (course-oriented, not a pixel-perfect overlay of the full 
 - **Traefik** — came with default k3d (Ingress) before the Knative cluster disabled it
 - **kube-state-metrics / node-exporter** — pulled in by the Prometheus Helm chart
 
-## Outside of the course
-
-*(Add personal items here if needed — leave empty if none.)*
-
-## Notes
-
-- Depth is limited on purpose (e.g. k3d → k3s → Flannel), so the map stays meaningful.
-- Rancher appears via **k3d/k3s**, not a full Rancher Manager install (see also exercise 5.5 comparison).
