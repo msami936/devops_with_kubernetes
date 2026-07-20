@@ -10,7 +10,12 @@ Config comes from ConfigMap `log-output-config` ([ConfigMaps](https://kubernetes
 - env `MESSAGE`
 - file `information.txt` mounted at `/config/information.txt`
 
-## GitOps with Flux (exercise 4.7)
+## Service mesh edition (exercise 5.3)
+
+See [MESH.md](./MESH.md) for Istio ambient + greeter traffic splitting (75% / 25%).
+
+Greeter code and manifests: [`../greeter/`](../greeter/).
+
 
 Log output is synced from Git by [Flux](https://fluxcd.io/) on the local k3d cluster.
 

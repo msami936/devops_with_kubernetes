@@ -12,11 +12,12 @@ spec:
     metadata:
       labels:
         app: log-output
+        version: latest
     spec:
       containers:
         - name: log-generator
-          image: log-output:4.1
-          imagePullPolicy: Never
+          image: msami936/log-output:5.3
+          imagePullPolicy: Always
           command: ["node", "generator.js"]
           env:
             - name: LOG_FILE
@@ -25,8 +26,8 @@ spec:
             - name: shared-log
               mountPath: /shared
         - name: log-reader
-          image: log-output:4.1
-          imagePullPolicy: Never
+          image: msami936/log-output:5.3
+          imagePullPolicy: Always
           command: ["node", "reader.js"]
           env:
             - name: PORT
@@ -35,6 +36,8 @@ spec:
               value: /shared/log.txt
             - name: PINGPONG_URL
               value: http://ping-pong:3000/pings
+            - name: GREETER_URL
+              value: http://greeter-svc:3000/
             - name: INFO_FILE
               value: /config/information.txt
             - name: MESSAGE
