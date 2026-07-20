@@ -5,7 +5,8 @@ metadata:
 spec:
   ingressClassName: traefik
   rules:
-    - http:
+    - host: todo.localhost
+      http:
         paths:
           - path: /todos
             pathType: Prefix

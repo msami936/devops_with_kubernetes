@@ -7,7 +7,6 @@ resources:
   - ../../base
   - ingress.yaml
 
-# GCS backup CronJob needs a cluster Secret; omit on local GitOps
 patches:
   - target:
       kind: CronJob
@@ -18,6 +17,16 @@ patches:
       kind: CronJob
       metadata:
         name: todo-db-backup
+  - target:
+      kind: PersistentVolumeClaim
+      name: todo-image-pvc
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: todo-image-pvc
+  - path: todo-app-emptydir.yaml
 
 images:
   - name: todo-app
