@@ -1,0 +1,26 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: todo-production
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/msami936/devops_with_kubernetes
+  ref:
+    # Each Git tag (semver) deploys production — latest matching tag wins
+    semver: ">=4.9.0"
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: todo-production
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./the_project/kustomize/overlays/production
+  prune: true
+  force: true
+  sourceRef:
+    kind: GitRepository
+    name: todo-production
+  timeout: 10m

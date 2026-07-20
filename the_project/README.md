@@ -24,15 +24,18 @@ Configuration is managed with **Kustomize** (`kustomize/base` + overlays).
 kustomize/
   base/                 # shared resources
   overlays/
-    gke/                # Docker Hub images + GCE Ingress
-    local/              # Docker Hub images + Traefik Ingress (Flux / k3d)
+    gke/                # Docker Hub images + GCE Ingress (namespace project)
+    staging/            # Flux: main branch → namespace staging
+    production/         # Flux: Git tags → namespace production
+    local/              # legacy single-namespace overlay (exercise 4.8)
 ```
 
 Preview:
 
 ```bash
 kubectl kustomize kustomize/overlays/gke
-kubectl kustomize kustomize/overlays/local
+kubectl kustomize kustomize/overlays/staging
+kubectl kustomize kustomize/overlays/production
 ```
 
 ## Deploy to GKE (exercise 3.5–3.7)
@@ -258,24 +261,36 @@ kubectl apply -k the_project/kustomize/overlays/gke
 kubectl -n project get deploy broadcaster   # expect 6/6
 ```
 
-## GitOps with Flux (exercise 4.8)
+## GitOps with Flux (exercise 4.8 / 4.9)
 
-Flux on k3d deploys **main** using [`kustomize/overlays/local`](kustomize/overlays/local) via [`clusters/k3d/todo-project.yaml`](../clusters/k3d/todo-project.yaml).
+| Environment | Namespace | Git trigger | Broadcaster | DB backup |
+|---|---|---|---|---|
+| Staging | `staging` | commits to **main** | log only (`FORWARD_TO_EXTERNAL=false`) | omitted |
+| Production | `production` | **semver tags** (`>=4.9.0`) | forwards via `broadcaster-secret` | CronJob kept |
+
+Flux manifests: [`clusters/k3d/todo-staging.yaml`](../clusters/k3d/todo-staging.yaml), [`clusters/k3d/todo-production.yaml`](../clusters/k3d/todo-production.yaml).
 
 ```bash
-# One-time Secret (not in Git)
-kubectl -n project create secret generic broadcaster-secret \
-  --from-literal=BROADCASTER_URL='https://webhook.site/<uuid>' \
+# Production webhook Secret (not in Git)
+kubectl -n production create secret generic broadcaster-secret \
+  --from-literal=BROADCASTER_URL='https://example.com/webhook' \
   --dry-run=client -o yaml | kubectl apply -f -
 
-# After committing changes under the_project/ to main:
 flux reconcile source git flux-system
-flux reconcile kustomization todo-project
+flux reconcile kustomization todo-staging
+flux reconcile source git todo-production
+flux reconcile kustomization todo-production
+
+flux get sources git
 flux get kustomizations
-kubectl get deploy,pods -n project
+kubectl get deploy -n staging
+kubectl get deploy -n production
 ```
 
-The GCS DB-backup CronJob is omitted from the local overlay (needs `storage-sa-key`). GKE keeps using `overlays/gke`.
+Access on k3d:
+
+- Staging: `http://staging.todo.localhost:8081/` (Host header or `/etc/hosts`)
+- Production: `http://production.todo.localhost:8081/`
 
 ## Run locally
 

@@ -4,6 +4,7 @@ kind: Kustomization
 namespace: project
 
 resources:
+  - namespace.yaml
   - ../../base
   - ingress.yaml
 
@@ -16,4 +17,4 @@ images:
     newTag: "4.6"
   - name: todo-broadcaster
     newName: msami936/todo-broadcaster
-    newTag: "4.6"
+    newTag: "4.9"

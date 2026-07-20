@@ -7,7 +7,8 @@ Subscribes to NATS todo events with a **queue group** so multiple replicas deliv
 | Variable | Description |
 |---|---|
 | `NATS_URL` | NATS server URL (e.g. `nats://nats:4222`) |
-| `BROADCASTER_URL` | Generic webhook URL (from Secret) |
+| `FORWARD_TO_EXTERNAL` | `true` to POST webhook; `false` (default) log only |
+| `BROADCASTER_URL` | Generic webhook URL (required when forwarding) |
 | `NATS_SUBJECT` | Subject filter (default `todos.>`) |
 | `QUEUE_GROUP` | Queue group name (default `broadcasters`) |
 

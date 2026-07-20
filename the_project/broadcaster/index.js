@@ -9,10 +9,15 @@ const requiredEnv = (name) => {
 }
 
 const NATS_URL = requiredEnv('NATS_URL')
-const BROADCASTER_URL = requiredEnv('BROADCASTER_URL')
+const FORWARD_TO_EXTERNAL = (process.env.FORWARD_TO_EXTERNAL || 'false').toLowerCase() === 'true'
+const BROADCASTER_URL = process.env.BROADCASTER_URL || ''
 const NATS_SUBJECT = process.env.NATS_SUBJECT || 'todos.>'
 const QUEUE_GROUP = process.env.QUEUE_GROUP || 'broadcasters'
 const POD_NAME = process.env.HOSTNAME || 'broadcaster'
+
+if (FORWARD_TO_EXTERNAL && !BROADCASTER_URL) {
+  throw new Error('BROADCASTER_URL is required when FORWARD_TO_EXTERNAL=true')
+}
 
 const sc = StringCodec()
 
@@ -30,10 +35,17 @@ const formatMessage = (subject, data) => {
   return `A todo was ${action}${content ? `: ${content}` : ''}${done}`
 }
 
-const forward = async (subject, data) => {
+const handleMessage = async (subject, data) => {
   const payload = {
     user: 'bot',
     message: formatMessage(subject, data),
+  }
+
+  if (!FORWARD_TO_EXTERNAL) {
+    console.log(
+      `[${POD_NAME}] log-only subject=${subject} message=${payload.message}`
+    )
+    return
   }
 
   const response = await fetch(BROADCASTER_URL, {
@@ -52,6 +64,10 @@ const forward = async (subject, data) => {
 }
 
 const run = async () => {
+  console.log(
+    `[${POD_NAME}] FORWARD_TO_EXTERNAL=${FORWARD_TO_EXTERNAL}`
+  )
+
   for (;;) {
     let nc
     try {
@@ -72,9 +88,9 @@ const run = async () => {
         }
 
         try {
-          await forward(msg.subject, data)
+          await handleMessage(msg.subject, data)
         } catch (error) {
-          console.error(`[${POD_NAME}] forward failed: ${error.message}`)
+          console.error(`[${POD_NAME}] handle failed: ${error.message}`)
         }
       }
     } catch (error) {

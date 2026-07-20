@@ -1,0 +1,63 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: staging
+
+resources:
+  - namespace.yaml
+  - ../../base
+  - ingress.yaml
+
+# Staging: log-only broadcaster (base default), no DB backup, emptyDir image cache
+patches:
+  - target:
+      kind: CronJob
+      name: todo-db-backup
+    patch: |-
+      $patch: delete
+      apiVersion: batch/v1
+      kind: CronJob
+      metadata:
+        name: todo-db-backup
+  - target:
+      kind: ConfigMap
+      name: todo-db-backup-config
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: todo-db-backup-config
+  - target:
+      kind: PersistentVolumeClaim
+      name: todo-image-pvc
+    patch: |-
+      $patch: delete
+      apiVersion: v1
+      kind: PersistentVolumeClaim
+      metadata:
+        name: todo-image-pvc
+  - target:
+      kind: Deployment
+      name: todo-app
+    patch: |-
+      - op: replace
+        path: /spec/strategy
+        value:
+          type: RollingUpdate
+      - op: replace
+        path: /spec/template/spec/volumes
+        value:
+          - name: todo-image-data
+            emptyDir: {}
+
+images:
+  - name: todo-app
+    newName: msami936/todo-app
+    newTag: "4.5"
+  - name: todo-backend
+    newName: msami936/todo-backend
+    newTag: "4.6"
+  - name: todo-broadcaster
+    newName: msami936/todo-broadcaster
+    newTag: "4.9"
