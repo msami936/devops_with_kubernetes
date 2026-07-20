@@ -5,6 +5,13 @@ Flux is bootstrapped against this path (`flux bootstrap ... --path=./clusters/k3
 | Resource | Role |
 |---|---|
 | `flux-system/` | Flux controllers + self-manage sync |
-| `log-output.yaml` | Syncs `./log_output/manifests` into the cluster |
+| `log-output.yaml` | Syncs `./log_output/manifests` (exercise 4.7) |
+| `todo-project.yaml` | Syncs `./the_project/kustomize/overlays/local` from **main** (exercise 4.8) |
 
-See [`log_output/README.md`](../log_output/README.md) for exercise 4.7 details.
+Create the broadcaster webhook Secret once (not stored in Git):
+
+```bash
+kubectl -n project create secret generic broadcaster-secret \
+  --from-literal=BROADCASTER_URL='https://webhook.site/<uuid>' \
+  --dry-run=client -o yaml | kubectl apply -f -
+```

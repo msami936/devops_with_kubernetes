@@ -25,12 +25,14 @@ kustomize/
   base/                 # shared resources
   overlays/
     gke/                # Docker Hub images + GCE Ingress
+    local/              # Docker Hub images + Traefik Ingress (Flux / k3d)
 ```
 
 Preview:
 
 ```bash
 kubectl kustomize kustomize/overlays/gke
+kubectl kustomize kustomize/overlays/local
 ```
 
 ## Deploy to GKE (exercise 3.5–3.7)
@@ -255,6 +257,25 @@ docker push msami936/todo-broadcaster:4.6
 kubectl apply -k the_project/kustomize/overlays/gke
 kubectl -n project get deploy broadcaster   # expect 6/6
 ```
+
+## GitOps with Flux (exercise 4.8)
+
+Flux on k3d deploys **main** using [`kustomize/overlays/local`](kustomize/overlays/local) via [`clusters/k3d/todo-project.yaml`](../clusters/k3d/todo-project.yaml).
+
+```bash
+# One-time Secret (not in Git)
+kubectl -n project create secret generic broadcaster-secret \
+  --from-literal=BROADCASTER_URL='https://webhook.site/<uuid>' \
+  --dry-run=client -o yaml | kubectl apply -f -
+
+# After committing changes under the_project/ to main:
+flux reconcile source git flux-system
+flux reconcile kustomization todo-project
+flux get kustomizations
+kubectl get deploy,pods -n project
+```
+
+The GCS DB-backup CronJob is omitted from the local overlay (needs `storage-sa-key`). GKE keeps using `overlays/gke`.
 
 ## Run locally
 

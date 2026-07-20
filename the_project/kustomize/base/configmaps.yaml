@@ -23,6 +23,8 @@ data:
   TODOS_PATH: /todos
   MAX_TODO_LENGTH: "140"
   NATS_URL: nats://nats:4222
+  # Touched by exercise 4.8 GitOps verification
+  GITOPS: "flux-main"
 ---
 apiVersion: v1
 kind: ConfigMap
