@@ -7,7 +7,7 @@ spec:
   interval: 1m
   url: https://github.com/msami936/devops_with_kubernetes
   ref:
-    # Each Git tag (semver) deploys production — latest matching tag wins
+    # Production tracks semver Git tags (e.g. 4.9.0). Course tags like 4.9 are aliased as 4.9.0.
     semver: ">=4.9.0"
 ---
 apiVersion: kustomize.toolkit.fluxcd.io/v1

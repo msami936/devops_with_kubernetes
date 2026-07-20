@@ -266,7 +266,7 @@ kubectl -n project get deploy broadcaster   # expect 6/6
 | Environment | Namespace | Git trigger | Broadcaster | DB backup |
 |---|---|---|---|---|
 | Staging | `staging` | commits to **main** | log only (`FORWARD_TO_EXTERNAL=false`) | omitted |
-| Production | `production` | **semver tags** (`>=4.9.0`) | forwards via `broadcaster-secret` | CronJob kept |
+| Production | `production` | **semver tags** (`>=4.9.0`, e.g. `4.9.0`) | forwards via `broadcaster-secret` | CronJob kept |
 
 Flux manifests: [`clusters/k3d/todo-staging.yaml`](../clusters/k3d/todo-staging.yaml), [`clusters/k3d/todo-production.yaml`](../clusters/k3d/todo-production.yaml).
 
