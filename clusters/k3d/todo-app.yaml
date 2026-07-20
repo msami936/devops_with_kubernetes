@@ -1,0 +1,40 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: todo-app-configs
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://github.com/msami936/todo-app-configs
+  ref:
+    branch: main
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: todo-staging
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./kustomize/overlays/staging
+  prune: true
+  force: true
+  sourceRef:
+    kind: GitRepository
+    name: todo-app-configs
+  timeout: 10m
+---
+apiVersion: kustomize.toolkit.fluxcd.io/v1
+kind: Kustomization
+metadata:
+  name: todo-production
+  namespace: flux-system
+spec:
+  interval: 1m
+  path: ./kustomize/overlays/production
+  prune: true
+  force: true
+  sourceRef:
+    kind: GitRepository
+    name: todo-app-configs
+  timeout: 10m

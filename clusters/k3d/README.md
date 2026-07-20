@@ -4,15 +4,8 @@ Flux is bootstrapped against this path (`flux bootstrap ... --path=./clusters/k3
 
 | Resource | Role |
 |---|---|
-| `flux-system/` | Flux controllers + self-manage sync |
-| `log-output.yaml` | Syncs `./log_output/manifests` (exercise 4.7) |
-| `todo-staging.yaml` | **main** → `./overlays/staging` → namespace `staging` (4.9) |
-| `todo-production.yaml` | **semver tags ≥4.9.0** → `./overlays/production` → namespace `production` (4.9) |
+| `flux-system/` | Flux controllers + self-manage sync (this repo) |
+| `log-output.yaml` | Syncs `./log_output/manifests` from **this** repo (4.7) |
+| `todo-app.yaml` | Syncs staging + production from **[todo-app-configs](https://github.com/msami936/todo-app-configs)** (4.9 / 4.10) |
 
-Secrets (e.g. `broadcaster-secret` in `production`) are applied outside GitOps.
-
-```bash
-kubectl -n production create secret generic broadcaster-secret \
-  --from-literal=BROADCASTER_URL='https://example.com/webhook' \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
+Application source: [todo-app-code](https://github.com/msami936/todo-app-code).
